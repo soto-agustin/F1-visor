@@ -9,8 +9,11 @@ const POLLING_INTERVAL_MS = 6000;
 const stalenessBanner = document.getElementById('staleness-banner');
 const stalenessText = document.getElementById('staleness-text');
 const liveDot = document.getElementById('live-dot');
+const syncTimeEl = document.getElementById('sync-time');
+const sessionBadgeEl = document.getElementById('session-badge');
 const sessionLapsEl = document.getElementById('session-laps');
 const flagBadgeEl = document.getElementById('flag-badge');
+const gridDeltaHeader = document.getElementById('grid-delta-header');
 
 // Hero Card Elements
 const heroDriverCode = document.getElementById('hero-driver-code');
@@ -19,6 +22,9 @@ const heroDriverPos = document.getElementById('hero-driver-pos');
 const heroDeltaVal = document.getElementById('hero-delta-val');
 const heroTyreVal = document.getElementById('hero-tyre-val');
 const heroTrendVal = document.getElementById('hero-trend-val');
+const metric1Label = document.getElementById('metric-1-label');
+const metric2Label = document.getElementById('metric-2-label');
+const metric3Label = document.getElementById('metric-3-label');
 const heroPitPred = document.getElementById('hero-pit-pred');
 const heroAccentBar = document.getElementById('hero-accent-bar');
 const driverModal = document.getElementById('driver-modal');
@@ -140,10 +146,15 @@ function checkStaleness() {
     stalenessBanner.classList.add('visible');
     stalenessText.textContent = `⚠️ DATOS DESFASADOS - VUELTA CONGELADA (Última señal hace ${diff}s)`;
     liveDot.className = 'brand-dot stale';
+    if (syncTimeEl) syncTimeEl.textContent = `Desfasado (+${diff}s)`;
   } else {
     state.markStale(false);
     stalenessBanner.classList.remove('visible');
     liveDot.className = state.isOffline ? 'brand-dot offline' : 'brand-dot';
+    if (syncTimeEl) {
+      if (diff <= 3) syncTimeEl.textContent = 'En vivo';
+      else syncTimeEl.textContent = `Hace ${diff}s`;
+    }
   }
 }
 
@@ -197,9 +208,36 @@ function renderUI() {
 
   if (!rs) return;
 
-  // Top Session Status
-  const isRace = rs.total && rs.total > 0;
-  sessionLapsEl.textContent = isRace ? `V ${rs.lap}/${rs.total}` : `V ${rs.lap}`;
+  // Top Session Status & Detection
+  const sess = (rs.sess || 'R').toUpperCase();
+  const isPractice = sess.startsWith('P') || sess.includes('FP');
+  const isQualy = sess.startsWith('Q');
+  const isRace = sess === 'R' || sess === 'CARRERA';
+
+  // Badge de sesión exacto
+  if (sessionBadgeEl) {
+    sessionBadgeEl.textContent = sess;
+    sessionBadgeEl.style.color = isRace ? '#ffd000' : isQualy ? '#ff334b' : '#00e5ff';
+  }
+
+  // Vuelta / tiempo transcurrido
+  if (isRace) {
+    sessionLapsEl.textContent = rs.total && rs.total > 0 ? `V ${rs.lap}/${rs.total}` : `V ${rs.lap}`;
+    gridDeltaHeader.textContent = 'Delta';
+    metric1Label.textContent = 'Delta Ant.';
+    metric3Label.textContent = 'Tendencia';
+  } else if (isQualy) {
+    sessionLapsEl.textContent = rs.lap ? `V ${rs.lap}` : 'QUALY';
+    gridDeltaHeader.textContent = 'Gap / Best';
+    metric1Label.textContent = 'Gap a P1';
+    metric3Label.textContent = 'Estado';
+  } else {
+    // Prácticas (FP1, FP2, FP3)
+    sessionLapsEl.textContent = rs.lap ? `V ${rs.lap}` : 'PRACTICE';
+    gridDeltaHeader.textContent = 'Mejor V.';
+    metric1Label.textContent = 'Gap a P1';
+    metric3Label.textContent = 'Vueltas';
+  }
   
   if (rs.flag) {
     flagBadgeEl.textContent = rs.flag;
@@ -233,23 +271,38 @@ function renderUI() {
     heroDriverPos.textContent = `P${pos}`;
     heroDeltaVal.textContent = delta;
     heroTyreVal.textContent = `${tyre} (${age}v)`;
-    heroTrendVal.textContent = trend === 1 ? '▲ Ganando' : trend === -1 ? '▼ Perdiendo' : '― Estable';
-    heroTrendVal.className = 'metric-val ' + (trend === 1 ? 'trend-up' : trend === -1 ? 'trend-down' : 'trend-flat');
+    if (isRace) {
+      heroTrendVal.textContent = trend === 1 ? '▲ Ganando' : trend === -1 ? '▼ Perdiendo' : '― Estable';
+      heroTrendVal.className = 'metric-val ' + (trend === 1 ? 'trend-up' : trend === -1 ? 'trend-down' : 'trend-flat');
+    } else if (isQualy) {
+      const inDanger = pos > 15;
+      heroTrendVal.textContent = inDanger ? '⚠️ ZONA CORTE' : '✓ PASA CORTE';
+      heroTrendVal.className = 'metric-val ' + (inDanger ? 'trend-down' : 'trend-up');
+    } else {
+      // FP
+      heroTrendVal.textContent = `${age} giros`;
+      heroTrendVal.className = 'metric-val trend-flat';
+    }
 
     // Notify haptic if favorite just entered pit
     if (inPit && !previousInPit.has(favCode)) {
       haptics.notify('pit');
     }
 
-    // Pit Window Prediction
-    const circuitMeta = sd?.circuits?.[state.currentCircuit] || { pit_loss_sec: rs.pit_delta || 21.0 };
-    const pitLoss = rs.pit_delta || circuitMeta.pit_loss_sec || 21.0;
-
-    if (state.isStale) {
+    // Pit Window Prediction (Solo activa en carrera)
+    if (!isRace) {
+      if (isQualy) {
+        heroPitPred.innerHTML = `<span class="pit-pred-icon">⏱️</span> Mejor tiempo: <strong>${delta}</strong> (Compuesto ${tyre})`;
+      } else {
+        heroPitPred.innerHTML = `<span class="pit-pred-icon">🏎️</span> Ensayos de tanda libre • Mejor registro: <strong>${delta}</strong>`;
+      }
+    } else if (state.isStale) {
       heroPitPred.innerHTML = '<span class="pit-pred-icon">⏸️</span> Predicción pausada (datos desfasados)';
     } else if (inPit) {
       heroPitPred.innerHTML = '<span class="pit-pred-icon">🛠️</span> <strong>EN PIT LANE AHORA</strong>';
     } else {
+      const circuitMeta = sd?.circuits?.[state.currentCircuit] || { pit_loss_sec: rs.pit_delta || 21.0 };
+      const pitLoss = rs.pit_delta || circuitMeta.pit_loss_sec || 21.0;
       const pred = calculatePitExit(favCode, currentDrivers, pitLoss);
       if (pred) {
         if (pred.retained) {
@@ -283,22 +336,23 @@ function renderUI() {
 
     const dMeta = sd?.drivers?.[code] || { color: '#ffffff' };
     const isFav = code === favCode;
+    const isCutoff = isQualy && (pos === 15 || pos === 10);
     const trendClass = trend === 1 ? 'trend-up' : trend === -1 ? 'trend-down' : 'trend-flat';
-    const trendArrow = trend === 1 ? '▲' : trend === -1 ? '▼' : ' ';
+    const trendArrow = isRace ? (trend === 1 ? '▲' : trend === -1 ? '▼' : '') : '';
 
     gridHtml += `
-      <div class="grid-row ${isFav ? 'favorite' : ''}" data-driver="${code}">
-        <div style="font-family:monospace; color:${pos <= 3 ? '#ffd000' : '#fff'};">${pos}</div>
+      <div class="grid-row ${isFav ? 'favorite' : ''} ${isCutoff ? 'elimination-cutoff' : ''}" data-driver="${code}">
+        <div style="font-family:monospace; text-align:center; color:${pos <= 3 ? '#ffd000' : isQualy && pos > 15 ? '#ff334b' : '#fff'}; font-size:12px;">${pos}</div>
         <div class="driver-col">
           <div class="team-pill" style="background:${dMeta.color};"></div>
-          <span>${code}</span>
+          <span style="letter-spacing:0.5px;">${code}</span>
         </div>
-        <div>
-          ${inPit ? '<span class="in-pit-tag">IN PIT</span>' : ''}
+        <div style="text-align:center;">
+          ${inPit ? '<span class="in-pit-tag">PIT</span>' : ''}
         </div>
-        <div>
+        <div style="display:flex; align-items:center; justify-content:center;">
           <span class="tyre-badge tyre-${tyre}">${tyre}</span>
-          <span style="font-size:11px; color:#a3a3a3;">${age}v</span>
+          <span style="font-size:10px; color:#a3a3a3; font-family:monospace;">${age}v</span>
         </div>
         <div class="delta-col">
           <span class="${trendClass}">${trendArrow}</span> ${delta}

@@ -65,11 +65,18 @@ class LiveStateStore:
 
     def update_session_info(self, data):
         with self.lock:
-            stype = data.get("Type") or data.get("Name") or ""
-            if "Practice" in stype:
-                self.session_type = "P"
-            elif "Qualifying" in stype:
-                self.session_type = "Q"
+            # Detectar si es Practice (P1, P2, P3), Qualy o Race
+            stype = (data.get("Type") or data.get("Name") or "").lower()
+            if "practice 1" in stype or "fp1" in stype:
+                self.session_type = "FP1"
+            elif "practice 2" in stype or "fp2" in stype:
+                self.session_type = "FP2"
+            elif "practice 3" in stype or "fp3" in stype:
+                self.session_type = "FP3"
+            elif "qualifying" in stype or "qualy" in stype:
+                self.session_type = "QUALY"
+            elif "practice" in stype:
+                self.session_type = "PRACTICE"
             else:
                 self.session_type = "R"
             

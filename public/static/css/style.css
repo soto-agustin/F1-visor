@@ -34,10 +34,12 @@ body {
   background-color: var(--bg-oled);
   color: var(--text-white);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
   user-select: none;
+  padding-bottom: env(safe-area-inset-bottom, 12px);
 }
 
 /* Status banner */
@@ -45,7 +47,7 @@ body {
   display: none;
   background-color: #7f1d1d;
   color: #fecaca;
-  padding: 6px 12px;
+  padding: calc(6px + env(safe-area-inset-top, 0px)) 12px 6px 12px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -61,7 +63,7 @@ body {
 header {
   background-color: #000000;
   border-bottom: 1px solid var(--border-dim);
-  padding: 10px 14px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -76,48 +78,58 @@ header {
   gap: 8px;
 }
 
-.brand-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--f1-green);
-  box-shadow: 0 0 8px var(--f1-green);
-}
-
-.brand-dot.stale {
-  background: var(--f1-yellow);
-  box-shadow: 0 0 8px var(--f1-yellow);
-}
-
-.brand-dot.offline {
-  background: var(--f1-red);
-  box-shadow: 0 0 8px var(--f1-red);
+.brand-text-col {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
 }
 
 .brand-title {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 900;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   text-transform: uppercase;
+}
+
+.sync-time-badge {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .session-badge {
   font-family: monospace;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 3px 6px;
   border-radius: 4px;
   background: var(--surface-2);
   border: 1px solid var(--border-bright);
+  color: var(--f1-yellow);
+}
+
+.laps-badge {
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-dim);
 }
 
 .flag-badge {
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 6px;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 2px 5px;
   border-radius: 3px;
   text-transform: uppercase;
-  margin-left: 6px;
 }
 .flag-green { background: #064e3b; color: #a7f3d0; border: 1px solid #059669; }
 .flag-yellow { background: #78350f; color: #fde68a; border: 1px solid #d97706; }
@@ -202,29 +214,35 @@ main {
 
 .hero-metrics {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 6px;
-  margin-top: 10px;
-  padding-top: 10px;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
   border-top: 1px solid var(--border-dim);
 }
 
 .metric-box {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .metric-label {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-dim);
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 
 .metric-val {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 800;
   font-family: monospace;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 
 .pit-prediction-box {
@@ -262,10 +280,10 @@ main {
 
 .grid-header {
   display: grid;
-  grid-template-columns: 34px 50px 1fr 64px 76px;
-  padding: 7px 10px;
+  grid-template-columns: 28px 52px 38px 48px 1fr;
+  padding: 6px 8px;
   background: var(--surface-2);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -274,9 +292,10 @@ main {
 
 .grid-row {
   display: grid;
-  grid-template-columns: 34px 50px 1fr 64px 76px;
+  grid-template-columns: 28px 52px 38px 48px 1fr;
   align-items: center;
-  padding: 8px 10px;
+  padding: 8px 8px;
+  min-height: 42px;
   border-bottom: 1px solid #171717;
   font-size: 13px;
   font-weight: 700;
@@ -292,10 +311,15 @@ main {
   border-left: 3px solid var(--f1-yellow);
 }
 
+/* Elimination cutoff lines for Qualy (Q1: top 15 pass, Q2: top 10 pass) */
+.grid-row.elimination-cutoff {
+  border-bottom: 2px dashed #ef4444;
+}
+
 .driver-col {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .team-pill {
@@ -308,13 +332,13 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
   border: 1.5px solid currentColor;
-  margin-right: 4px;
+  margin-right: 2px;
 }
 
 .tyre-S { color: var(--compound-soft); }

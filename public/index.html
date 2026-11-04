@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Trackside Pulse — Ultra-Low Bandwidth F1 Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Trackside Pulse — F1 Live Viewer</title>
   
   <!-- PWA & Meta tags -->
   <meta name="theme-color" content="#000000">
@@ -25,10 +25,14 @@
   <header>
     <div class="brand">
       <div id="live-dot" class="brand-dot" title="Estado de conexión"></div>
-      <span class="brand-title">Trackside Pulse</span>
+      <div class="brand-text-col">
+        <span class="brand-title">Trackside Pulse</span>
+        <span id="sync-time" class="sync-time-badge">En vivo</span>
+      </div>
     </div>
-    <div style="display:flex; align-items:center;">
-      <span id="session-laps" class="session-badge">V --/--</span>
+    <div class="header-right">
+      <span id="session-badge" class="session-badge">FP1</span>
+      <span id="session-laps" class="laps-badge">V --/--</span>
       <span id="flag-badge" class="flag-badge flag-green">GREEN</span>
     </div>
   </header>
@@ -56,15 +60,15 @@
 
       <div class="hero-metrics">
         <div class="metric-box">
-          <span class="metric-label">Delta Ant.</span>
+          <span id="metric-1-label" class="metric-label">Delta Ant.</span>
           <span id="hero-delta-val" class="metric-val">+0.000</span>
         </div>
         <div class="metric-box">
-          <span class="metric-label">Neumático</span>
+          <span id="metric-2-label" class="metric-label">Neumático</span>
           <span id="hero-tyre-val" class="metric-val">M (0v)</span>
         </div>
         <div class="metric-box">
-          <span class="metric-label">Tendencia</span>
+          <span id="metric-3-label" class="metric-label">Tendencia</span>
           <span id="hero-trend-val" class="metric-val trend-flat">― Estable</span>
         </div>
       </div>
@@ -79,11 +83,11 @@
     <!-- OLED Timing Grid -->
     <section class="grid-container">
       <div class="grid-header">
-        <span>Pos</span>
+        <span style="text-align:center;">Pos</span>
         <span>Piloto</span>
-        <span>Pit</span>
-        <span>Comp</span>
-        <span style="text-align:right;">Delta</span>
+        <span style="text-align:center;">Pit</span>
+        <span style="text-align:center;">Comp</span>
+        <span id="grid-delta-header" style="text-align:right;">Delta</span>
       </div>
       <div id="timing-grid-body">
         <!-- Rendered dynamically via app.js -->
