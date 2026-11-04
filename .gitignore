@@ -6,4 +6,5 @@ __pycache__/
 worker/__pycache__/
 worker/data/raw/
 worker/data/test_live.txt
+worker/data/live_state.json
 scratch/
