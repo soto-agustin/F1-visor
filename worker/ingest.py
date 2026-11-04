@@ -209,12 +209,49 @@ class LiveStateStore:
 
 def run_live_signalr(store):
     from fastf1.livetiming.client import SignalRClient
+    from signalrcore.hub_connection_builder import HubConnectionBuilder
     
     class TracksideSignalR(SignalRClient):
+        def _run(self):
+            # Pre-negociar cookie AWSALBCORS
+            r = requests.options(self._negotiate_url, headers=self.headers)
+            if 'AWSALBCORS' in r.cookies:
+                self.headers.update({"Cookie": f"AWSALBCORS={r.cookies['AWSALBCORS']}"})
+
+            options = {
+                "verify_ssl": True,
+                "access_token_factory": self._access_token_factory(),
+                "headers": self.headers
+            }
+
+            # Configurar con auto-reconnect infinito en caso de microcortes
+            self._connection = HubConnectionBuilder() \
+                .with_url(self._connection_url, options=options) \
+                .with_automatic_reconnect({
+                    "type": "raw",
+                    "keep_alive_interval": 15,
+                    "reconnect_interval": 5,
+                    "max_attempts": None  # Reintentos infinitos
+                }) \
+                .configure_logging(logging.WARNING) \
+                .build()
+
+            self._connection.on_open(self._on_connect)
+            self._connection.on_close(self._on_close)
+            self._connection.on_reconnect(lambda: logger.info("SignalR reconectado automáticamente."))
+            self._connection.on("feed", self._on_message)
+
+            self._connection.start()
+
+            while not self._is_connected:
+                time.sleep(0.1)
+
+            logger.info("Suscrito a todos los tópicos de F1 Live Timing.")
+            self._connection.send("Subscribe", [self.topics], on_invocation=self._on_message)
+
         def _on_message(self, msg):
             self._t_last_message = time.time()
             try:
-                # msg suele ser una lista: [topic, json_string, ...]
                 if isinstance(msg, list) and len(msg) >= 2:
                     topic = msg[0]
                     raw_content = msg[1]
@@ -229,11 +266,10 @@ def run_live_signalr(store):
                     elif topic == "SessionInfo":
                         store.update_session_info(parsed)
             except Exception as e:
-                logger.debug(f"Error procesando frame {e}")
+                logger.debug(f"Error procesando frame: {e}")
 
-    # Archivo dummy en memoria/temp
     client = TracksideSignalR(filename=os.devnull, timeout=0)
-    logger.info("Iniciando conexión a F1 Live Timing SignalR...")
+    logger.info("Iniciando conexión a F1 Live Timing SignalR con Auto-Reconnect...")
     client.start()
 
 
