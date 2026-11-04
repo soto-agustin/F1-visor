@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.local
+.vercel
+__pycache__/
+worker/__pycache__/
+worker/data/raw/
+worker/data/test_live.txt
+scratch/

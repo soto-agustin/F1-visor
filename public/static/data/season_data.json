@@ -1,0 +1,164 @@
+{
+  "season": 2026,
+  "circuit_default": "interlagos",
+  "drivers": {
+    "ALB": {
+      "name": "A. Albon",
+      "num": 23,
+      "team": "Williams",
+      "color": "#1868DB"
+    },
+    "ALO": {
+      "name": "F. Alonso",
+      "num": 14,
+      "team": "Aston Martin",
+      "color": "#229971"
+    },
+    "ANT": {
+      "name": "K. Antonelli",
+      "num": 12,
+      "team": "Mercedes",
+      "color": "#00D7B6"
+    },
+    "BEA": {
+      "name": "O. Bearman",
+      "num": 87,
+      "team": "Haas F1 Team",
+      "color": "#9C9FA2"
+    },
+    "BOR": {
+      "name": "G. Bortoleto",
+      "num": 5,
+      "team": "Audi",
+      "color": "#F50537"
+    },
+    "BOT": {
+      "name": "V. Bottas",
+      "num": 77,
+      "team": "Cadillac",
+      "color": "#909090"
+    },
+    "COL": {
+      "name": "F. Colapinto",
+      "num": 43,
+      "team": "Alpine",
+      "color": "#00A1E8"
+    },
+    "GAS": {
+      "name": "P. Gasly",
+      "num": 10,
+      "team": "Alpine",
+      "color": "#00A1E8"
+    },
+    "HAD": {
+      "name": "I. Hadjar",
+      "num": 6,
+      "team": "Red Bull Racing",
+      "color": "#4781D7"
+    },
+    "HAM": {
+      "name": "L. Hamilton",
+      "num": 44,
+      "team": "Ferrari",
+      "color": "#ED1131"
+    },
+    "HIR": {
+      "name": "R. Hirakawa",
+      "num": 50,
+      "team": "Haas F1 Team",
+      "color": "#9C9FA2"
+    },
+    "HUL": {
+      "name": "N. Hulkenberg",
+      "num": 27,
+      "team": "Audi",
+      "color": "#F50537"
+    },
+    "LAW": {
+      "name": "L. Lawson",
+      "num": 30,
+      "team": "Racing Bulls",
+      "color": "#6C98FF"
+    },
+    "LEC": {
+      "name": "C. Leclerc",
+      "num": 16,
+      "team": "Ferrari",
+      "color": "#ED1131"
+    },
+    "LIN": {
+      "name": "A. Lindblad",
+      "num": 41,
+      "team": "Racing Bulls",
+      "color": "#6C98FF"
+    },
+    "NOR": {
+      "name": "L. Norris",
+      "num": 1,
+      "team": "McLaren",
+      "color": "#F47600"
+    },
+    "OCO": {
+      "name": "E. Ocon",
+      "num": 31,
+      "team": "Haas F1 Team",
+      "color": "#9C9FA2"
+    },
+    "PER": {
+      "name": "S. Perez",
+      "num": 11,
+      "team": "Cadillac",
+      "color": "#909090"
+    },
+    "PIA": {
+      "name": "O. Piastri",
+      "num": 81,
+      "team": "McLaren",
+      "color": "#F47600"
+    },
+    "RUS": {
+      "name": "G. Russell",
+      "num": 63,
+      "team": "Mercedes",
+      "color": "#00D7B6"
+    },
+    "SAI": {
+      "name": "C. Sainz",
+      "num": 55,
+      "team": "Williams",
+      "color": "#1868DB"
+    },
+    "STR": {
+      "name": "L. Stroll",
+      "num": 18,
+      "team": "Aston Martin",
+      "color": "#229971"
+    },
+    "VER": {
+      "name": "M. Verstappen",
+      "num": 3,
+      "team": "Red Bull Racing",
+      "color": "#4781D7"
+    }
+  },
+  "circuits": {
+    "interlagos": {
+      "name": "Autódromo José Carlos Pace (Interlagos)",
+      "country": "Brazil",
+      "total_laps": 71,
+      "pit_loss_sec": 21.0
+    },
+    "monza": {
+      "name": "Autodromo Nazionale Monza",
+      "country": "Italy",
+      "total_laps": 53,
+      "pit_loss_sec": 24.0
+    },
+    "silverstone": {
+      "name": "Silverstone Circuit",
+      "country": "United Kingdom",
+      "total_laps": 52,
+      "pit_loss_sec": 21.5
+    }
+  }
+}

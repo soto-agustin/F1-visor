@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Trackside Pulse — Ultra-Low Bandwidth F1 Viewer</title>
+  
+  <!-- PWA & Meta tags -->
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="Visor táctico de ultra-bajo ancho de banda para espectadores presenciales en autódromos">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  
+  <!-- High Contrast OLED Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <!-- Staleness Warning Banner (> 90s) -->
+  <div id="staleness-banner">
+    <span id="staleness-text">⚠️ DATOS DESFASADOS - VUELTA CONGELADA</span>
+  </div>
+
+  <!-- Main Top Header -->
+  <header>
+    <div class="brand">
+      <div id="live-dot" class="brand-dot" title="Estado de conexión"></div>
+      <span class="brand-title">Trackside Pulse</span>
+    </div>
+    <div style="display:flex; align-items:center;">
+      <span id="session-laps" class="session-badge">V --/--</span>
+      <span id="flag-badge" class="flag-badge flag-green">GREEN</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Card (Favorite Driver) -->
+    <section class="hero-card" id="hero-card">
+      <div class="hero-accent-bar" id="hero-accent-bar"></div>
+      
+      <div class="hero-top-row">
+        <button id="open-driver-modal" class="driver-selector-btn" aria-label="Cambiar piloto favorito">
+          <span>PILOTO</span>
+          <span style="font-size:10px;">▼</span>
+        </button>
+        <span style="font-size:11px; font-weight:700; color:#a3a3a3; text-transform:uppercase;">Favorito</span>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+        <div class="hero-info-center">
+          <span id="hero-driver-code" class="hero-code">VER</span>
+          <span id="hero-driver-name" class="hero-name">M. Verstappen</span>
+        </div>
+        <div id="hero-driver-pos" class="hero-pos-large">P1</div>
+      </div>
+
+      <div class="hero-metrics">
+        <div class="metric-box">
+          <span class="metric-label">Delta Ant.</span>
+          <span id="hero-delta-val" class="metric-val">+0.000</span>
+        </div>
+        <div class="metric-box">
+          <span class="metric-label">Neumático</span>
+          <span id="hero-tyre-val" class="metric-val">M (0v)</span>
+        </div>
+        <div class="metric-box">
+          <span class="metric-label">Tendencia</span>
+          <span id="hero-trend-val" class="metric-val trend-flat">― Estable</span>
+        </div>
+      </div>
+
+      <!-- Pit Prediction Box -->
+      <div class="pit-prediction-box" id="hero-pit-pred">
+        <span class="pit-pred-icon">⏱️</span>
+        <span class="pit-pred-text">Calculando ventana de parada...</span>
+      </div>
+    </section>
+
+    <!-- OLED Timing Grid -->
+    <section class="grid-container">
+      <div class="grid-header">
+        <span>Pos</span>
+        <span>Piloto</span>
+        <span>Pit</span>
+        <span>Comp</span>
+        <span style="text-align:right;">Delta</span>
+      </div>
+      <div id="timing-grid-body">
+        <!-- Rendered dynamically via app.js -->
+        <div style="padding: 20px; text-align: center; color: #737373; font-size: 12px;">
+          Sintonizando telemetría...
+        </div>
+      </div>
+    </section>
+
+    <!-- Ticker / Direct Incidents Feed -->
+    <section class="ticker-card">
+      <div class="ticker-title">Últimas Incidencias de Carrera</div>
+      <ul id="ticker-list" class="ticker-list">
+        <li class="ticker-item">Esperando inicio de sesión...</li>
+      </ul>
+    </section>
+  </main>
+
+  <!-- Driver Selector Modal -->
+  <div class="modal-overlay" id="driver-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span style="font-weight:900; font-size:14px; text-transform:uppercase;">Seleccionar Piloto</span>
+        <button id="close-driver-modal" style="background:none; border:none; color:#fff; font-size:18px; cursor:pointer;">✕</button>
+      </div>
+      <div class="modal-body" id="modal-driver-list">
+        <!-- Drivers populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Core App Logic -->
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

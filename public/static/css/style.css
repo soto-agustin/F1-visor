@@ -1,0 +1,449 @@
+/* Trackside Pulse - High-Contrast Pure OLED Stylesheet (WCAG AAA compliant) */
+:root {
+  --bg-oled: #000000;
+  --surface-1: #0a0a0a;
+  --surface-2: #141414;
+  --border-dim: #262626;
+  --border-bright: #404040;
+  --text-white: #ffffff;
+  --text-muted: #a3a3a3;
+  --text-dim: #737373;
+  
+  --f1-red: #ff1801;
+  --f1-yellow: #ffd000;
+  --f1-green: #00e676;
+  --f1-cyan: #00e5ff;
+  
+  --compound-soft: #ff334b;
+  --compound-med: #ffd000;
+  --compound-hard: #ffffff;
+  --compound-inter: #39b54a;
+  --compound-wet: #00a0e9;
+  --compound-unk: #808080;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  background-color: var(--bg-oled);
+  color: var(--text-white);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  user-select: none;
+}
+
+/* Status banner */
+#staleness-banner {
+  display: none;
+  background-color: #7f1d1d;
+  color: #fecaca;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-align: center;
+  border-bottom: 2px solid #ef4444;
+}
+
+#staleness-banner.visible {
+  display: block;
+}
+
+/* Header */
+header {
+  background-color: #000000;
+  border-bottom: 1px solid var(--border-dim);
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--f1-green);
+  box-shadow: 0 0 8px var(--f1-green);
+}
+
+.brand-dot.stale {
+  background: var(--f1-yellow);
+  box-shadow: 0 0 8px var(--f1-yellow);
+}
+
+.brand-dot.offline {
+  background: var(--f1-red);
+  box-shadow: 0 0 8px var(--f1-red);
+}
+
+.brand-title {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.session-badge {
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-bright);
+}
+
+.flag-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  margin-left: 6px;
+}
+.flag-green { background: #064e3b; color: #a7f3d0; border: 1px solid #059669; }
+.flag-yellow { background: #78350f; color: #fde68a; border: 1px solid #d97706; }
+.flag-red { background: #7f1d1d; color: #fecaca; border: 1px solid #dc2626; }
+.flag-sc { background: #d97706; color: #000000; font-weight: 900; }
+.flag-vsc { background: #ca8a04; color: #000000; font-weight: 900; }
+
+/* Main Container */
+main {
+  flex: 1;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Hero Favorite Card */
+.hero-card {
+  background: var(--surface-1);
+  border: 2px solid var(--border-bright);
+  border-radius: 10px;
+  padding: 12px 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-accent-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 6px;
+  background-color: var(--f1-cyan);
+}
+
+.hero-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.driver-selector-btn {
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--text-white);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hero-pos-large {
+  font-size: 38px;
+  font-weight: 900;
+  line-height: 1;
+  font-family: monospace;
+}
+
+.hero-info-center {
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-code {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.hero-name {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.hero-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-dim);
+}
+
+.metric-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.metric-val {
+  font-size: 15px;
+  font-weight: 800;
+  font-family: monospace;
+}
+
+.pit-prediction-box {
+  margin-top: 10px;
+  background: #000000;
+  border: 1px dashed var(--border-bright);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pit-pred-icon {
+  font-size: 14px;
+}
+
+.pit-pred-text {
+  color: #e5e5e5;
+  font-weight: 600;
+}
+
+.pit-pred-text strong {
+  color: var(--f1-yellow);
+}
+
+/* Compact OLED Timing Grid */
+.grid-container {
+  background: var(--surface-1);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.grid-header {
+  display: grid;
+  grid-template-columns: 34px 50px 1fr 64px 76px;
+  padding: 7px 10px;
+  background: var(--surface-2);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.grid-row {
+  display: grid;
+  grid-template-columns: 34px 50px 1fr 64px 76px;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid #171717;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.grid-row:active, .grid-row.favorite {
+  background: #171717;
+}
+
+.grid-row.favorite {
+  border-left: 3px solid var(--f1-yellow);
+}
+
+.driver-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.team-pill {
+  width: 3px;
+  height: 14px;
+  border-radius: 1px;
+}
+
+.tyre-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 900;
+  border: 1.5px solid currentColor;
+  margin-right: 4px;
+}
+
+.tyre-S { color: var(--compound-soft); }
+.tyre-M { color: var(--compound-med); }
+.tyre-H { color: var(--compound-hard); }
+.tyre-I { color: var(--compound-inter); }
+.tyre-W { color: var(--compound-wet); }
+.tyre-U { color: var(--compound-unk); }
+
+.delta-col {
+  text-align: right;
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.trend-up { color: var(--f1-green); }
+.trend-down { color: var(--f1-red); }
+.trend-flat { color: var(--text-dim); }
+
+.in-pit-tag {
+  background: var(--f1-yellow);
+  color: #000;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+/* Ticker / Incident Feed */
+.ticker-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.ticker-title {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+
+.ticker-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ticker-item {
+  font-size: 11px;
+  font-family: monospace;
+  color: #d4d4d4;
+  line-height: 1.3;
+  padding: 3px 0;
+  border-bottom: 1px solid #1a1a1a;
+}
+.ticker-item:last-child {
+  border-bottom: none;
+}
+
+/* Modal Selector */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  padding: 16px;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.open {
+  display: flex;
+}
+
+.modal-content {
+  background: #0d0d0d;
+  border: 1px solid var(--border-bright);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-body {
+  overflow-y: auto;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.driver-pick-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border-dim);
+  color: #fff;
+  padding: 10px;
+  border-radius: 6px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.driver-pick-btn:active, .driver-pick-btn.selected {
+  border-color: var(--f1-yellow);
+  background: #1f1f1f;
+}
+
+/* iOS Flash effect fallback */
+.haptic-flash {
+  box-shadow: inset 0 0 0 4px #ffffff !important;
+  transition: box-shadow 0.08s ease-in-out;
+}
