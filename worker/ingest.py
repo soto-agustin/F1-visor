@@ -258,9 +258,42 @@ def main():
     parser.add_argument("--upstash-url", default=os.getenv("UPSTASH_REDIS_REST_URL"))
     parser.add_argument("--upstash-token", default=os.getenv("UPSTASH_REDIS_REST_TOKEN"))
     parser.add_argument("--pit-loss", type=float, default=21.0, help="Pérdida en boxes (ej. 21.0 para Interlagos)")
+    parser.add_argument("--replay", type=str, default=None, help="Ruta al archivo JSON de replay a simular en Upstash")
+    parser.add_argument("--speed", type=float, default=5.0, help="Velocidad del replay (ej: 5.0)")
+    parser.add_argument("--loop", action="store_true", help="Repetir replay al terminar")
     args = parser.parse_args()
 
     store = LiveStateStore(pit_loss_sec=args.pit_loss)
+
+    # Modo Replay transmitido directo a Upstash Redis para pruebas en vivo
+    if args.replay:
+        replay_path = pathlib.Path(args.replay)
+        if not replay_path.exists():
+            logger.error(f"Archivo de replay no encontrado: {replay_path}")
+            sys.exit(1)
+        data = json.loads(replay_path.read_text(encoding="utf-8"))
+        frames = data["frames"]
+        logger.info(f"Iniciando simulación de carrera hacia Upstash Redis: {len(frames)} frames a x{args.speed}...")
+
+        url = args.upstash_url or os.getenv("UPSTASH_REDIS_REST_URL")
+        token = args.upstash_token or os.getenv("UPSTASH_REDIS_REST_TOKEN")
+        if not url or not token:
+            logger.error("Se requiere UPSTASH_REDIS_REST_URL y UPSTASH_REDIS_REST_TOKEN")
+            sys.exit(1)
+
+        step_delay = (frames[1]["t"] - frames[0]["t"]) / args.speed if len(frames) > 1 else 1.0
+
+        while True:
+            for f in frames:
+                payload = dict(f["p"])
+                payload["pit_delta"] = args.pit_loss
+                ts = int(time.time())
+                push_to_upstash(url, token, payload, ts)
+                logger.info(f"Simulando en la nube -> Vuelta {payload.get('lap')}/{payload.get('total')} | Bandera: {payload.get('flag')}")
+                time.sleep(step_delay)
+            if not args.loop:
+                break
+        return
 
     if args.live:
         t = threading.Thread(target=run_live_signalr, args=(store,), daemon=True)
