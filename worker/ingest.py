@@ -263,6 +263,15 @@ def main():
     parser.add_argument("--loop", action="store_true", help="Repetir replay al terminar")
     args = parser.parse_args()
 
+    # Cargar .env si existe
+    env_file = ROOT.parent / ".env"
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
     store = LiveStateStore(pit_loss_sec=args.pit_loss)
 
     # Modo Replay transmitido directo a Upstash Redis para pruebas en vivo
