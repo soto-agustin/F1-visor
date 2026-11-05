@@ -412,10 +412,14 @@ def run_live_signalr(store):
     
     class TracksideSignalR(SignalRClient):
         def _run(self):
-            # Pre-negociar cookie AWSALBCORS
-            r = requests.options(self._negotiate_url, headers=self.headers)
-            if 'AWSALBCORS' in r.cookies:
-                self.headers.update({"Cookie": f"AWSALBCORS={r.cookies['AWSALBCORS']}"})
+            self._output_file = open(os.devnull, "w")
+            try:
+                # Pre-negociar cookie AWSALBCORS con timeout seguro
+                r = requests.options(self._negotiate_url, headers=self.headers, timeout=5)
+                if 'AWSALBCORS' in r.cookies:
+                    self.headers.update({"Cookie": f"AWSALBCORS={r.cookies['AWSALBCORS']}"})
+            except Exception as e:
+                logger.warning(f"Advertencia pre-negociando cookie SignalR: {e}")
 
             options = {
                 "verify_ssl": True,
@@ -442,11 +446,16 @@ def run_live_signalr(store):
 
             self._connection.start()
 
-            while not self._is_connected:
+            for _ in range(100):
+                if self._is_connected:
+                    break
                 time.sleep(0.1)
 
-            logger.info("Suscrito a todos los tópicos de F1 Live Timing.")
-            self._connection.send("Subscribe", [self.topics], on_invocation=self._on_message)
+            if self._is_connected:
+                logger.info("Suscrito a todos los tópicos de F1 Live Timing.")
+                self._connection.send("Subscribe", [self.topics], on_invocation=self._on_message)
+            else:
+                logger.warning("SignalR no logró establecer conexión inmediata, reintentando...")
 
         def _on_message(self, msg):
             self._t_last_message = time.time()
@@ -471,14 +480,21 @@ def run_live_signalr(store):
             except Exception as e:
                 logger.debug(f"Error procesando frame: {e}")
 
-    client = TracksideSignalR(filename=os.devnull, timeout=0)
-    logger.info("Iniciando conexión a F1 Live Timing SignalR con Auto-Reconnect...")
-    client.start()
+    # Supervisor continuo: si el stream de F1 cae o no está transmitiendo, reintenta permanentemente
+    while True:
+        try:
+            logger.info("Iniciando conexión a F1 Live Timing SignalR con Auto-Reconnect...")
+            client = TracksideSignalR(filename=os.devnull, timeout=0)
+            client.start()
+        except Exception as e:
+            logger.warning(f"Conexión SignalR interrumpida o stream cerrado: {e}. Reintentando en 8 segundos...")
+            time.sleep(8)
 
 
 def push_to_upstash(redis_url, redis_token, payload, ts):
     """Guarda el payload en Upstash Redis vía REST API"""
     try:
+        clean_url = redis_url.rstrip("/")
         # Clave 'race_state'
         full_payload = {**payload, "ts": ts}
         body_str = json.dumps(full_payload, separators=(",", ":"))
@@ -489,7 +505,7 @@ def push_to_upstash(redis_url, redis_token, payload, ts):
         headers = {"Authorization": f"Bearer {redis_token}"}
         
         # SET race_state y SET race_state_hash
-        requests.post(f"{redis_url}/pipeline", headers=headers, json=[
+        requests.post(f"{clean_url}/pipeline", headers=headers, json=[
             ["SET", "race_state", body_str],
             ["SET", "race_state_hash", etag_hash],
             ["SET", "race_state_ts", str(ts)]
@@ -579,6 +595,7 @@ def main():
             
             # También persistir un archivo local para el servidor de desarrollo
             cache_file = ROOT / "data" / "live_state.json"
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
             cache_file.write_text(json.dumps({**payload, "ts": ts}, indent=2), encoding="utf-8")
         except Exception as e:
             logger.error(f"Error en loop de publicación: {e}")

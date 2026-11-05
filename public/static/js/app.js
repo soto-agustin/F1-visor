@@ -139,15 +139,20 @@ function buildDriverModal(seasonData) {
   }
 }
 
-// 3. Polling Engine with ETag / 304 handling
+// 3. Polling Engine with ETag / 304 handling and network timeout protection
 async function fetchRaceState() {
   const headers = {};
   if (state.lastEtag) {
     headers['If-None-Match'] = state.lastEtag;
   }
 
+  // AbortController para prevenir cuelgues en redes móviles congestionadas de circuito
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 7500);
+
   try {
-    const res = await fetch('/api/live', { headers });
+    const res = await fetch('/api/live', { headers, signal: controller.signal });
+    clearTimeout(timeoutId);
 
     // X-TS viaja también en los 304: el ETag excluye "ts", así que sin esto
     // un estado sin cambios parecería "desfasado" aunque el servidor esté vivo.
@@ -198,13 +203,14 @@ async function fetchRaceState() {
       console.warn('API response status:', res.status);
     }
   } catch (err) {
-    console.warn('Network error or offline during fetch:', err);
+    clearTimeout(timeoutId);
+    console.warn('Network error or timeout during fetch:', err);
     state.setOffline(!navigator.onLine);
     checkStaleness();
   }
 }
 
-// 4. Staleness Detector (> 90 seconds)
+// 4. Staleness Detector (> 90 seconds) con protección de reloj local
 function checkStaleness() {
   const lastTs = state.lastTs || state.raceState?.ts;
   if (!lastTs) {
@@ -212,25 +218,26 @@ function checkStaleness() {
   }
   const nowSec = Math.floor(Date.now() / 1000);
   const diff = nowSec - lastTs;
+  const safeDiff = Math.max(0, diff);
 
-  if (diff > STALE_THRESHOLD_SECONDS) {
+  if (safeDiff > STALE_THRESHOLD_SECONDS) {
     state.markStale(true);
     stalenessBanner.classList.add('visible');
-    stalenessText.textContent = `⚠️ DATOS DESFASADOS - VUELTA CONGELADA (Última señal hace ${diff}s)`;
+    stalenessText.textContent = `⚠️ DATOS DESFASADOS - VUELTA CONGELADA (Última señal hace ${safeDiff}s)`;
     liveDot.className = 'brand-dot stale';
-    if (syncTimeEl) syncTimeEl.textContent = `Desfasado (+${diff}s)`;
+    if (syncTimeEl) syncTimeEl.textContent = `Desfasado (+${safeDiff}s)`;
   } else {
     state.markStale(false);
     stalenessBanner.classList.remove('visible');
     liveDot.className = state.isOffline ? 'brand-dot offline' : 'brand-dot';
     if (syncTimeEl) {
-      if (diff <= 3) syncTimeEl.textContent = 'En vivo';
-      else syncTimeEl.textContent = `Hace ${diff}s`;
+      if (safeDiff <= 3) syncTimeEl.textContent = 'En vivo';
+      else syncTimeEl.textContent = `Hace ${safeDiff}s`;
     }
   }
 }
 
-// 5. Pit Exit Calculation (Gap Accumulation)
+// 5. Pit Exit Calculation (Gap Accumulation) robusto
 function calculatePitExit(favDriverCode, drivers, pitLossSec) {
   if (!drivers || drivers.length === 0) return null;
   const favIndex = drivers.findIndex(d => d[0] === favDriverCode);
@@ -239,8 +246,11 @@ function calculatePitExit(favDriverCode, drivers, pitLossSec) {
   const favDriver = drivers[favIndex];
   const favPos = favDriver[1];
 
-  // If already leading by a huge gap or last
-  // Parse interval deltas to calculate cumulative gaps
+  // Si ya es el último auto clasificado en pista
+  if (favIndex === drivers.length - 1) {
+    return { pos: favPos, behind: null, retained: true, isLast: true };
+  }
+
   let cumulativeGapBehind = 0;
   let rejoiningBehindDriver = null;
   let projectedPos = favPos;
@@ -248,13 +258,20 @@ function calculatePitExit(favDriverCode, drivers, pitLossSec) {
   // Drivers behind the favorite
   for (let i = favIndex + 1; i < drivers.length; i++) {
     const d = drivers[i];
-    // Delta string: "+1.840" or "1 LAP"
     const deltaStr = d[2] || '+0.000';
+    
+    // Ignorar pilotos retirados / abandonos (no compiten en la ventana)
+    if (/DNF|OUT|STOP|RET/i.test(deltaStr)) {
+      continue;
+    }
+
     let deltaSec = 0;
     if (/LAP/i.test(deltaStr)) {
-      deltaSec = 999; // doblado: fuera de cualquier ventana de pit
-    } else if (deltaStr.includes('+')) {
-      deltaSec = parseFloat(deltaStr.replace('+', '')) || 0;
+      deltaSec = 999; // doblado: fuera de ventana de pit
+    } else {
+      const cleanNum = String(deltaStr).replace(/[^0-9.]/g, '');
+      const parsed = parseFloat(cleanNum);
+      if (!isNaN(parsed)) deltaSec = parsed;
     }
     cumulativeGapBehind += deltaSec;
 
@@ -262,15 +279,15 @@ function calculatePitExit(favDriverCode, drivers, pitLossSec) {
       projectedPos = d[1];
       rejoiningBehindDriver = d[0];
     } else {
-      // We found the gap where pit loss is absorbed
+      // Encontramos el hueco donde se absorbe el tiempo de parada
       break;
     }
   }
 
   if (projectedPos === favPos) {
-    return { pos: favPos, behind: null, retained: true };
+    return { pos: favPos, behind: null, retained: true, isLast: false };
   }
-  return { pos: projectedPos, behind: rejoiningBehindDriver, retained: false };
+  return { pos: projectedPos, behind: rejoiningBehindDriver, retained: false, isLast: false };
 }
 
 // 6. UI Render Engine
@@ -490,7 +507,9 @@ function renderUI() {
       const pitLoss = rs.pit_delta || circuitMeta.pit_loss_sec || 21.0;
       const pred = calculatePitExit(favCode, currentDrivers, pitLoss);
       if (pred) {
-        if (pred.retained) {
+        if (pred.isLast) {
+          heroPitPred.innerHTML = `<span class="pit-pred-icon">⏱️</span> Si para ahora: Reincorpora en <strong>P${pred.pos}</strong> (Cola del pelotón)`;
+        } else if (pred.retained) {
           heroPitPred.innerHTML = `<span class="pit-pred-icon">⏱️</span> Si para ahora: <strong>Retiene P${pred.pos}</strong> (Ventana abierta)`;
         } else {
           heroPitPred.innerHTML = `<span class="pit-pred-icon">⏱️</span> Si para ahora: Sale <strong>P${pred.pos}</strong> detrás de <strong>${pred.behind}</strong>`;
@@ -502,6 +521,7 @@ function renderUI() {
     heroDeltaVal.textContent = '--';
     heroTyreVal.textContent = '--';
     heroTrendVal.textContent = '--';
+    if (heroFiaBadgeEl) heroFiaBadgeEl.style.display = 'none';
     heroPitPred.innerHTML = 'Piloto no clasificado o fuera de sesión';
   }
 
@@ -596,14 +616,6 @@ function renderUI() {
   }
   timingGridBody.innerHTML = gridHtml;
 
-  // Add click to select favorite directly from grid
-  timingGridBody.querySelectorAll('.grid-row').forEach(row => {
-    row.addEventListener('click', () => {
-      const code = row.getAttribute('data-driver');
-      if (code) state.setFavoriteDriver(code);
-    });
-  });
-
   // Render Ticker
   if (rs.ticker && rs.ticker.length > 0) {
     tickerListEl.innerHTML = rs.ticker
@@ -623,6 +635,15 @@ openModalBtn.addEventListener('click', (e) => {
 if (heroCardEl) {
   heroCardEl.addEventListener('click', () => driverModal.classList.add('open'));
 }
+
+// Delegación de eventos en la grilla (1 solo listener eficiente y sin memory leaks)
+timingGridBody.addEventListener('click', (e) => {
+  const row = e.target.closest('.grid-row');
+  if (row) {
+    const code = row.getAttribute('data-driver');
+    if (code) state.setFavoriteDriver(code);
+  }
+});
 
 function updateSegmentButtons() {
   if (viewTop11Btn) viewTop11Btn.classList.toggle('active', state.gridSegmentMode === 'top11');
@@ -662,14 +683,45 @@ driverModal.addEventListener('click', (e) => {
 window.addEventListener('online', () => state.setOffline(false));
 window.addEventListener('offline', () => state.setOffline(true));
 
+// Screen Wake Lock API (mantiene la pantalla encendida sin apagarse durante la carrera en el circuito)
+let wakeLock = null;
+
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch (err) {
+      console.debug('WakeLock no disponible o no permitido:', err);
+    }
+  }
+}
+
+// Reconexión y refresco instantáneo al volver a la pestaña (desbloquear pantalla o cambiar app)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    requestWakeLock();
+    fetchRaceState();
+  }
+});
+
 // 8. Bootstrap
 state.subscribe(renderUI);
+
+let pollTimer = null;
+
+// Polling recursivo controlado (previene encolamiento de peticiones si la red móvil está saturada)
+async function pollLoop() {
+  clearTimeout(pollTimer);
+  await fetchRaceState();
+  pollTimer = setTimeout(pollLoop, POLLING_INTERVAL_MS);
+}
 
 // Initial bootstrap sequence
 async function init() {
   await loadSeasonData();
-  await fetchRaceState();
-  setInterval(fetchRaceState, POLLING_INTERVAL_MS);
+  requestWakeLock();
+  pollLoop();
   setInterval(checkStaleness, 3000);
 }
 

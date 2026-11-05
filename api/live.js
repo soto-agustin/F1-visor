@@ -16,9 +16,11 @@ export default async function handler(request) {
     });
   }
 
+  const cleanRedisUrl = redisUrl.replace(/\/+$/, '');
+
   try {
     // 1. Obtener simultáneamente race_state, race_state_hash y race_state_ts usando REST Pipeline
-    const pipelineRes = await fetch(`${redisUrl}/pipeline`, {
+    const pipelineRes = await fetch(`${cleanRedisUrl}/pipeline`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${redisToken}`,
