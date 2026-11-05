@@ -283,7 +283,7 @@ main {
   display: grid;
   grid-template-columns: 24px 44px 28px 44px 1fr;
   column-gap: 2px;
-  padding: 6px 6px;
+  padding: 5px 6px;
   background: var(--surface-2);
   font-size: 9px;
   font-weight: 800;
@@ -297,10 +297,10 @@ main {
   grid-template-columns: 24px 44px 28px 44px 1fr;
   column-gap: 2px;
   align-items: center;
-  padding: 8px 6px;
-  min-height: 40px;
+  padding: 5px 6px;
+  min-height: 33px;
   border-bottom: 1px solid #171717;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: background-color 0.1s ease;
@@ -327,16 +327,16 @@ main {
 
 .team-pill {
   width: 3px;
-  height: 13px;
+  height: 12px;
   border-radius: 1px;
 }
 
-/* Toolbar de vista rápida (Todos vs Batalla) */
+/* Toolbar de segmentación de parrilla (Top 11 / Bottom 11 / Todos) */
 .grid-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 10px;
+  padding: 5px 8px;
   background: #000;
   border-bottom: 1px solid var(--border-dim);
 }
@@ -362,20 +362,24 @@ main {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
-  padding: 3px 8px;
+  padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .toggle-btn.active {
-  background: #262626;
+  background: #2b2b2b;
   color: var(--f1-yellow);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .toggle-btn:active {
-  background: #333;
+  background: #383838;
 }
 
 /* Pastillas de neumáticos sólidas para sol directo */

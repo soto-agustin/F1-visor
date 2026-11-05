@@ -35,8 +35,10 @@ const closeModalBtn = document.getElementById('close-driver-modal');
 
 // Timing Grid
 const timingGridBody = document.getElementById('timing-grid-body');
+const viewTop11Btn = document.getElementById('view-top11-btn');
+const viewBottom11Btn = document.getElementById('view-bottom11-btn');
 const viewAllBtn = document.getElementById('view-all-btn');
-const viewBattleBtn = document.getElementById('view-battle-btn');
+let hasUserManuallyToggledSegment = false;
 // Ticker
 const tickerListEl = document.getElementById('ticker-list');
 
@@ -79,6 +81,13 @@ function buildDriverModal(seasonData) {
 
     btn.addEventListener('click', () => {
       state.setFavoriteDriver(code);
+      if (state.gridSegmentMode !== 'all' && state.raceState?.drivers) {
+        const dRow = state.raceState.drivers.find(d => d[0] === code);
+        if (dRow) {
+          const p = dRow[1] || 1;
+          state.setGridSegmentMode(p <= 11 ? 'top11' : 'bottom11');
+        }
+      }
       driverModal.classList.remove('open');
     });
 
@@ -382,11 +391,19 @@ function renderUI() {
   // Update inPit set
   previousInPit = new Set(currentDrivers.filter(d => (isRace ? d[5] === 1 : d[6] === 1)).map(d => d[0]));
 
-  // Filtrar según modo Batalla (±2 posiciones respecto al favorito) o Todos
+  // Auto-align segment to favorite driver's position if user hasn't toggled manually
+  if (!hasUserManuallyToggledSegment && favRow && state.gridSegmentMode !== 'all') {
+    const p = favRow[1] || 1;
+    state.gridSegmentMode = p <= 11 ? 'top11' : 'bottom11';
+  }
+  updateSegmentButtons();
+
+  // Filtrar según segmentación de grilla: Top 11 (P1-11), Bottom 11 (P12-22) o Todos (22)
   let displayedDrivers = currentDrivers;
-  if (state.battleViewMode && favRow) {
-    const favPos = favRow[1];
-    displayedDrivers = currentDrivers.filter(d => Math.abs(d[1] - favPos) <= 2);
+  if (state.gridSegmentMode === 'top11') {
+    displayedDrivers = currentDrivers.filter(d => (d[1] || 99) <= 11);
+  } else if (state.gridSegmentMode === 'bottom11') {
+    displayedDrivers = currentDrivers.filter(d => (d[1] || 99) > 11);
   }
 
   // Render Timing Grid según modo de sesión
@@ -470,16 +487,33 @@ if (heroCardEl) {
   heroCardEl.addEventListener('click', () => driverModal.classList.add('open'));
 }
 
-if (viewAllBtn && viewBattleBtn) {
-  viewAllBtn.addEventListener('click', () => {
-    state.setBattleViewMode(false);
-    viewAllBtn.classList.add('active');
-    viewBattleBtn.classList.remove('active');
+function updateSegmentButtons() {
+  if (viewTop11Btn) viewTop11Btn.classList.toggle('active', state.gridSegmentMode === 'top11');
+  if (viewBottom11Btn) viewBottom11Btn.classList.toggle('active', state.gridSegmentMode === 'bottom11');
+  if (viewAllBtn) viewAllBtn.classList.toggle('active', state.gridSegmentMode === 'all');
+}
+
+if (viewTop11Btn) {
+  viewTop11Btn.addEventListener('click', () => {
+    hasUserManuallyToggledSegment = true;
+    state.setGridSegmentMode('top11');
+    updateSegmentButtons();
   });
-  viewBattleBtn.addEventListener('click', () => {
-    state.setBattleViewMode(true);
-    viewBattleBtn.classList.add('active');
-    viewAllBtn.classList.remove('active');
+}
+
+if (viewBottom11Btn) {
+  viewBottom11Btn.addEventListener('click', () => {
+    hasUserManuallyToggledSegment = true;
+    state.setGridSegmentMode('bottom11');
+    updateSegmentButtons();
+  });
+}
+
+if (viewAllBtn) {
+  viewAllBtn.addEventListener('click', () => {
+    hasUserManuallyToggledSegment = true;
+    state.setGridSegmentMode('all');
+    updateSegmentButtons();
   });
 }
 
