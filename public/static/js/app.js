@@ -120,6 +120,22 @@ async function fetchRaceState() {
         previousFlag = data.flag;
       }
 
+      // Sincronizar metadatos de pilotos si el servidor los envía dinámicamente
+      if (data.grid_meta && Object.keys(data.grid_meta).length > 0) {
+        const currentSd = state.seasonData || { drivers: {} };
+        let metaChanged = false;
+        for (const [code, info] of Object.entries(data.grid_meta)) {
+          if (!currentSd.drivers[code] || currentSd.drivers[code].name !== info.name) {
+            currentSd.drivers[code] = info;
+            metaChanged = true;
+          }
+        }
+        if (metaChanged) {
+          state.setSeasonData(currentSd);
+          buildDriverModal(currentSd);
+        }
+      }
+
       state.updateRaceState(data, etag);
       checkStaleness();
     } else {
@@ -260,26 +276,51 @@ function renderUI() {
   const favRow = currentDrivers.find(d => d[0] === favCode);
 
   if (favRow) {
-    // favRow: [CODE, POS, DELTA, TYRE, AGE, IN_PIT, TREND]
     const pos = favRow[1];
-    const delta = favRow[2];
-    const tyre = favRow[3];
-    const age = favRow[4];
-    const inPit = favRow[5] === 1;
-    const trend = favRow[6];
+    
+    // Variables según modo
+    let delta = '';
+    let tyre = 'M';
+    let age = 0;
+    let inPit = false;
+    let trend = 0;
+    let bestLap = '--';
+    let gapP1 = '--';
+
+    if (isRace) {
+      // Carrera: [CODE, POS, GAP_ANT, TYRE, AGE, IN_PIT, TREND]
+      delta = favRow[2] || '+0.000';
+      tyre = favRow[3] || 'M';
+      age = favRow[4] || 0;
+      inPit = favRow[5] === 1;
+      trend = favRow[6] || 0;
+    } else {
+      // FP / Qualy: [CODE, POS, BEST_LAP, GAP_P1, TYRE, LAPS_TOTAL, IN_PIT]
+      bestLap = favRow[2] || '--';
+      gapP1 = favRow[3] || '--';
+      tyre = favRow[4] || 'M';
+      age = favRow[5] || 0;
+      inPit = favRow[6] === 1;
+      delta = bestLap;
+    }
 
     heroDriverPos.textContent = `P${pos}`;
-    heroDeltaVal.textContent = delta;
-    heroTyreVal.textContent = `${tyre} (${age}v)`;
+
     if (isRace) {
+      heroDeltaVal.textContent = delta;
+      heroTyreVal.textContent = `${tyre} (${age}v)`;
       heroTrendVal.textContent = trend === 1 ? '▲ Ganando' : trend === -1 ? '▼ Perdiendo' : '― Estable';
       heroTrendVal.className = 'metric-val ' + (trend === 1 ? 'trend-up' : trend === -1 ? 'trend-down' : 'trend-flat');
     } else if (isQualy) {
+      heroDeltaVal.textContent = gapP1;
+      heroTyreVal.textContent = `${tyre} (${age}v)`;
       const inDanger = pos > 15;
-      heroTrendVal.textContent = inDanger ? '⚠️ ZONA CORTE' : '✓ PASA CORTE';
+      heroTrendVal.textContent = inDanger ? '🔴 ZONA CORTE' : '🟢 PASA';
       heroTrendVal.className = 'metric-val ' + (inDanger ? 'trend-down' : 'trend-up');
     } else {
       // FP
+      heroDeltaVal.textContent = gapP1;
+      heroTyreVal.textContent = `${tyre} (Mejor)`;
       heroTrendVal.textContent = `${age} giros`;
       heroTrendVal.className = 'metric-val trend-flat';
     }
@@ -289,13 +330,12 @@ function renderUI() {
       haptics.notify('pit');
     }
 
-    // Pit Window Prediction (Solo activa en carrera)
-    if (!isRace) {
-      if (isQualy) {
-        heroPitPred.innerHTML = `<span class="pit-pred-icon">⏱️</span> Mejor tiempo: <strong>${delta}</strong> (Compuesto ${tyre})`;
-      } else {
-        heroPitPred.innerHTML = `<span class="pit-pred-icon">🏎️</span> Ensayos de tanda libre • Mejor registro: <strong>${delta}</strong>`;
-      }
+    // Pit Window / Info Box según modo
+    if (isQualy) {
+      const cutoffGap = pos > 15 ? 'Fuera por el momento' : 'Dentro del corte';
+      heroPitPred.innerHTML = `<span class="pit-pred-icon">⏱️</span> Mejor tiempo: <strong>${bestLap}</strong> (${cutoffGap})`;
+    } else if (isPractice) {
+      heroPitPred.innerHTML = `<span class="pit-pred-icon">🏎️</span> Mejor registro: <strong>${bestLap}</strong> • ${age} vueltas en sesión`;
     } else if (state.isStale) {
       heroPitPred.innerHTML = '<span class="pit-pred-icon">⏸️</span> Predicción pausada (datos desfasados)';
     } else if (inPit) {
@@ -321,24 +361,38 @@ function renderUI() {
   }
 
   // Update inPit set
-  previousInPit = new Set(currentDrivers.filter(d => d[5] === 1).map(d => d[0]));
+  previousInPit = new Set(currentDrivers.filter(d => (isRace ? d[5] === 1 : d[6] === 1)).map(d => d[0]));
 
-  // Render Timing Grid
+  // Render Timing Grid según modo de sesión
   let gridHtml = '';
   for (const d of currentDrivers) {
     const code = d[0];
     const pos = d[1];
-    const delta = d[2];
-    const tyre = d[3];
-    const age = d[4];
-    const inPit = d[5] === 1;
-    const trend = d[6];
+    let dDelta = '';
+    let dTyre = 'M';
+    let dAge = 0;
+    let dInPit = false;
+    let dTrend = 0;
+
+    if (isRace) {
+      dDelta = d[2];
+      dTyre = d[3];
+      dAge = d[4];
+      dInPit = d[5] === 1;
+      dTrend = d[6];
+    } else {
+      // FP / Qualy: d[2]=best_lap, d[3]=gap_p1, d[4]=tyre, d[5]=laps, d[6]=in_pit
+      dDelta = isPractice ? d[2] : (pos === 1 ? d[2] : d[3]);
+      dTyre = d[4];
+      dAge = d[5];
+      dInPit = d[6] === 1;
+    }
 
     const dMeta = sd?.drivers?.[code] || { color: '#ffffff' };
     const isFav = code === favCode;
     const isCutoff = isQualy && (pos === 15 || pos === 10);
-    const trendClass = trend === 1 ? 'trend-up' : trend === -1 ? 'trend-down' : 'trend-flat';
-    const trendArrow = isRace ? (trend === 1 ? '▲' : trend === -1 ? '▼' : '') : '';
+    const trendClass = dTrend === 1 ? 'trend-up' : dTrend === -1 ? 'trend-down' : 'trend-flat';
+    const trendArrow = isRace ? (dTrend === 1 ? '▲' : dTrend === -1 ? '▼' : '') : '';
 
     gridHtml += `
       <div class="grid-row ${isFav ? 'favorite' : ''} ${isCutoff ? 'elimination-cutoff' : ''}" data-driver="${code}">
@@ -348,14 +402,14 @@ function renderUI() {
           <span style="letter-spacing:0.5px;">${code}</span>
         </div>
         <div style="text-align:center;">
-          ${inPit ? '<span class="in-pit-tag">PIT</span>' : ''}
+          ${dInPit ? '<span class="in-pit-tag">PIT</span>' : ''}
         </div>
         <div style="display:flex; align-items:center; justify-content:center;">
-          <span class="tyre-badge tyre-${tyre}">${tyre}</span>
-          <span style="font-size:10px; color:#a3a3a3; font-family:monospace;">${age}v</span>
+          <span class="tyre-badge tyre-${dTyre}">${dTyre}</span>
+          <span style="font-size:10px; color:#a3a3a3; font-family:monospace;">${dAge}v</span>
         </div>
         <div class="delta-col">
-          <span class="${trendClass}">${trendArrow}</span> ${delta}
+          <span class="${trendClass}">${trendArrow}</span> ${dDelta}
         </div>
       </div>
     `;

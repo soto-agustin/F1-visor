@@ -44,7 +44,7 @@ class LiveStateStore:
     def __init__(self, pit_loss_sec=21.0):
         self.lock = threading.Lock()
         self.pit_loss_sec = pit_loss_sec
-        self.session_type = "R" # R, Q, P
+        self.session_type = "R" # R, FP1, FP2, FP3, QUALY
         self.lap = 1
         self.total_laps = 71
         self.flag = "GREEN"
@@ -53,15 +53,79 @@ class LiveStateStore:
         self.last_update_ts = int(time.time())
         self.previous_intervals = {} # num -> prev_float
         
-        # Cargar season_data si existe
+        # Meta de pilotos dinámica: num -> {"name", "tla", "team", "color", "num"}
         self.drivers_meta = {}
+        self.grid_updated = False
+        
+        # Cargar base desde season_data si existe
         if SEASON_DATA_PATH.exists():
             try:
                 sdata = json.loads(SEASON_DATA_PATH.read_text(encoding="utf-8"))
                 for tla, info in sdata.get("drivers", {}).items():
-                    self.drivers_meta[str(info["num"])] = tla
+                    num_str = str(info["num"])
+                    self.drivers_meta[num_str] = {
+                        "name": info.get("name", tla),
+                        "tla": tla,
+                        "team": info.get("team", "Unknown"),
+                        "color": info.get("color", "#FFFFFF"),
+                        "num": info.get("num")
+                    }
             except Exception as e:
-                logger.warning(f"No se pudo cargar season_data: {e}")
+                logger.warning(f"No se pudo cargar season_data base: {e}")
+
+    def update_driver_list(self, data):
+        """Actualiza dinámicamente la parrilla desde el stream oficial DriverList"""
+        with self.lock:
+            changed = False
+            for num_str, dinfo in data.items():
+                if not isinstance(dinfo, dict):
+                    continue
+                tla = dinfo.get("Tla") or dinfo.get("BroadcastName", "")[:3].strip()
+                if not tla:
+                    continue
+                full_name = dinfo.get("FullName") or f"{dinfo.get('FirstName', '')} {dinfo.get('LastName', '')}".strip()
+                team_name = dinfo.get("TeamName") or "F1 Team"
+                team_col = dinfo.get("TeamColour") or "FFFFFF"
+                if not team_col.startswith("#"):
+                    team_col = f"#{team_col}"
+                
+                prev = self.drivers_meta.get(num_str)
+                if not prev or prev.get("tla") != tla or prev.get("team") != team_name:
+                    self.drivers_meta[num_str] = {
+                        "name": full_name or tla,
+                        "tla": tla,
+                        "team": team_name,
+                        "color": team_col,
+                        "num": int(num_str) if num_str.isdigit() else num_str
+                    }
+                    changed = True
+                    logger.info(f"Parrilla actualizada: #{num_str} -> {tla} ({full_name}) [{team_name}]")
+
+            if changed:
+                self.grid_updated = True
+                self.last_update_ts = int(time.time())
+                # Persistir season_data.json local
+                self._persist_season_data()
+
+    def _persist_season_data(self):
+        try:
+            curr = {}
+            if SEASON_DATA_PATH.exists():
+                curr = json.loads(SEASON_DATA_PATH.read_text(encoding="utf-8"))
+            
+            drivers_dict = {}
+            for num_str, d in self.drivers_meta.items():
+                drivers_dict[d["tla"]] = {
+                    "name": d["name"],
+                    "num": d["num"],
+                    "team": d["team"],
+                    "color": d["color"]
+                }
+            curr["drivers"] = drivers_dict
+            SEASON_DATA_PATH.write_text(json.dumps(curr, indent=2, ensure_ascii=False), encoding="utf-8")
+            logger.info(f"season_data.json actualizado en disco con {len(drivers_dict)} pilotos.")
+        except Exception as e:
+            logger.warning(f"Error persistiendo season_data: {e}")
 
     def update_session_info(self, data):
         with self.lock:
@@ -119,42 +183,64 @@ class LiveStateStore:
         with self.lock:
             lines = data.get("Lines", {})
             for num_str, entry in lines.items():
+                meta = self.drivers_meta.get(num_str, {})
+                tla = meta.get("tla") or num_str
+                
                 cur = self.drivers_state.setdefault(num_str, {
                     "num": num_str,
-                    "tla": self.drivers_meta.get(num_str, num_str),
+                    "tla": tla,
                     "pos": 99,
                     "gap": "--",
+                    "best_lap": "--",
+                    "gap_p1": "--",
                     "comp": "M",
                     "age": 0,
                     "in_pit": 0,
                     "trend": 0,
-                    "numeric_gap": None
+                    "laps": 0
                 })
-                
+                # Asegurar TLA actualizado si llegó DriverList posterior
+                if tla != num_str:
+                    cur["tla"] = tla
+
                 # Posición
                 if "Position" in entry:
                     try: cur["pos"] = int(entry["Position"])
                     except Exception: pass
 
-                # Gap / Interval
+                # Vueltas completadas
+                if "NumberOfLaps" in entry:
+                    try: cur["laps"] = int(entry["NumberOfLaps"])
+                    except Exception: pass
+
+                # Mejor vuelta (BestLapTime) para Prácticas y Qualy
+                best_lap_info = entry.get("BestLapTime")
+                if isinstance(best_lap_info, dict) and "Value" in best_lap_info:
+                    cur["best_lap"] = best_lap_info["Value"]
+
+                # Gap al líder (GapToLeader)
+                if "GapToLeader" in entry:
+                    cur["gap_p1"] = str(entry["GapToLeader"])
+
+                # Gap / Interval al auto de adelante (para Carrera)
                 interval = entry.get("IntervalToPositionAhead", {})
                 gap_val = interval.get("Value")
                 if gap_val is not None:
                     cur["gap"] = str(gap_val)
                     try:
                         clean_gap = float(str(gap_val).replace("+", ""))
-                        # Calcular tendencia
                         prev = self.previous_intervals.get(num_str)
                         if prev is not None and cur["pos"] > 1:
                             diff = clean_gap - prev
-                            if diff < -0.15: cur["trend"] = 1   # descontando
-                            elif diff > 0.15: cur["trend"] = -1 # perdiendo
+                            if diff < -0.15: cur["trend"] = 1
+                            elif diff > 0.15: cur["trend"] = -1
                             else: cur["trend"] = 0
                         self.previous_intervals[num_str] = clean_gap
                     except Exception:
                         pass
                 elif cur["pos"] == 1:
                     cur["gap"] = "+0.000"
+                    cur["gap_p1"] = "+0.000"
 
                 # Estado de Pit
                 if "InPit" in entry:
@@ -184,19 +270,34 @@ class LiveStateStore:
             # Ordenar por posición
             sorted_drivers = sorted(self.drivers_state.values(), key=lambda d: d["pos"])
             drivers_array = []
+            is_race = self.session_type in ("R", "CARRERA")
+            
             for d in sorted_drivers:
-                # [CODE, POS, GAP, COMP, AGE, IN_PIT, TREND]
-                drivers_array.append([
-                    d["tla"],
-                    d["pos"],
-                    d["gap"],
-                    d["comp"],
-                    d["age"],
-                    d["in_pit"],
-                    d["trend"]
-                ])
+                if is_race:
+                    # En Carrera: [CODE, POS, GAP_ANT, TYRE, AGE, IN_PIT, TREND]
+                    drivers_array.append([
+                        d["tla"],
+                        d["pos"],
+                        d["gap"],
+                        d["comp"],
+                        d["age"],
+                        d["in_pit"],
+                        d["trend"]
+                    ])
+                else:
+                    # En FP / Qualy: [CODE, POS, BEST_LAP, GAP_P1, TYRE, LAPS_TOTAL, IN_PIT]
+                    drivers_array.append([
+                        d["tla"],
+                        d["pos"],
+                        d["best_lap"] if d["best_lap"] != "--" else d["gap"],
+                        d["gap_p1"] if d["gap_p1"] != "--" else d["gap"],
+                        d["comp"],
+                        d["laps"] if d["laps"] > 0 else d["age"],
+                        d["in_pit"]
+                    ])
 
-            return {
+            # Incluir metadatos de pilotos si se actualizó la parrilla
+            payload = {
                 "sess": self.session_type,
                 "lap": self.lap,
                 "total": self.total_laps,
@@ -204,7 +305,20 @@ class LiveStateStore:
                 "pit_delta": self.pit_loss_sec,
                 "drivers": drivers_array,
                 "ticker": list(self.ticker)
-            }, self.last_update_ts
+            }
+            
+            # Enviar metadatos de pilotos para que el cliente siempre tenga dorsales y colores frescos
+            drivers_meta_client = {}
+            for n, info in self.drivers_meta.items():
+                drivers_meta_client[info["tla"]] = {
+                    "name": info["name"],
+                    "num": info["num"],
+                    "team": info["team"],
+                    "color": info["color"]
+                }
+            payload["grid_meta"] = drivers_meta_client
+
+            return payload, self.last_update_ts
 
 
 def run_live_signalr(store):
@@ -259,6 +373,8 @@ def run_live_signalr(store):
                     
                     if topic == "TimingData":
                         store.update_timing_data(parsed)
+                    elif topic == "DriverList":
+                        store.update_driver_list(parsed)
                     elif topic == "TrackStatus":
                         store.update_track_status(parsed)
                     elif topic == "RaceControlMessages":
