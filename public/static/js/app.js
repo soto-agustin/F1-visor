@@ -564,9 +564,21 @@ function renderUI() {
     const isFav = code === favCode;
     const isCutoff = isQualy && (pos === 15 || pos === 10);
 
+    const basePos = previousLapPositions[code] != null ? previousLapPositions[code] : pos;
+    const posDiff = basePos - pos;
+    let posArrowHtml = '<span class="pos-arrow"></span>';
+    if (isRace && posDiff > 0) {
+      posArrowHtml = '<span class="pos-arrow pos-arrow-up" title="Adelantó en la vuelta actual">▲</span>';
+    } else if (isRace && posDiff < 0) {
+      posArrowHtml = '<span class="pos-arrow pos-arrow-down" title="Fue adelantado en la vuelta actual">▼</span>';
+    }
+
     gridHtml += `
       <div class="grid-row ${isFav ? 'favorite' : ''} ${isCutoff ? 'elimination-cutoff' : ''}" data-driver="${code}">
-        <div style="font-family:monospace; text-align:center; color:${pos <= 3 ? '#ffd000' : isQualy && pos > 15 ? '#ff334b' : '#fff'}; font-size:12px;">${pos}</div>
+        <div class="pos-cell">
+          ${posArrowHtml}
+          <span class="pos-num" style="color:${pos <= 3 ? '#ffd000' : isQualy && pos > 15 ? '#ff334b' : '#fff'};">${pos}</span>
+        </div>
         <div class="driver-col">
           <div class="team-pill" style="background:${dMeta.color};"></div>
           <span style="letter-spacing:0.5px;">${code}</span>

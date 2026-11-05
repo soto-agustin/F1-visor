@@ -303,7 +303,7 @@ main {
 
 .grid-header {
   display: grid;
-  grid-template-columns: 24px 44px 32px 42px 1fr;
+  grid-template-columns: 28px 44px 32px 42px 1fr;
   column-gap: 2px;
   padding: 5px 6px;
   background: var(--surface-2);
@@ -316,7 +316,7 @@ main {
 
 .grid-row {
   display: grid;
-  grid-template-columns: 24px 44px 32px 42px 1fr;
+  grid-template-columns: 28px 44px 32px 42px 1fr;
   column-gap: 2px;
   align-items: center;
   padding: 5px 6px;
@@ -326,6 +326,42 @@ main {
   font-weight: 700;
   cursor: pointer;
   transition: background-color 0.1s ease;
+}
+
+.pos-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1;
+  gap: 1px;
+}
+
+.pos-arrow {
+  display: inline-block;
+  width: 7px;
+  font-size: 8px;
+  line-height: 1;
+  text-align: center;
+  flex-shrink: 0;
+  font-weight: 900;
+}
+
+.pos-arrow-up {
+  color: var(--f1-green);
+}
+
+.pos-arrow-down {
+  color: var(--f1-red);
+}
+
+.pos-num {
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 14px;
+  text-align: right;
 }
 
 .grid-row:active, .grid-row.favorite {
