@@ -91,10 +91,32 @@ header {
   text-transform: uppercase;
 }
 
+.brand-sub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.circuit-badge {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--f1-yellow);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.brand-sub-sep {
+  color: var(--text-dim);
+  font-size: 9px;
+}
+
 .sync-time-badge {
   font-size: 9px;
   color: var(--text-muted);
   font-family: monospace;
+  white-space: nowrap;
 }
 
 .header-right {
@@ -281,7 +303,7 @@ main {
 
 .grid-header {
   display: grid;
-  grid-template-columns: 24px 44px 28px 44px 1fr;
+  grid-template-columns: 24px 44px 32px 42px 1fr;
   column-gap: 2px;
   padding: 5px 6px;
   background: var(--surface-2);
@@ -294,7 +316,7 @@ main {
 
 .grid-row {
   display: grid;
-  grid-template-columns: 24px 44px 28px 44px 1fr;
+  grid-template-columns: 24px 44px 32px 42px 1fr;
   column-gap: 2px;
   align-items: center;
   padding: 5px 6px;
@@ -433,6 +455,61 @@ main {
   font-weight: 900;
   padding: 1px 4px;
   border-radius: 2px;
+}
+
+/* Badges FIA: Sanciones e Investigaciones en Grilla */
+.fia-badge {
+  font-size: 9px;
+  font-weight: 900;
+  padding: 1px 3px;
+  border-radius: 3px;
+  letter-spacing: 0.2px;
+  font-family: monospace;
+  display: inline-block;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.fia-pen {
+  background: #dc2626;
+  color: #ffffff;
+  border: 1px solid #ef4444;
+}
+
+.fia-inv {
+  background: #d97706;
+  color: #000000;
+  border: 1px solid #f59e0b;
+  animation: fia-inv-pulse 1.6s infinite ease-in-out;
+}
+
+@keyframes fia-inv-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(0.96); }
+}
+
+.hero-fia-badge {
+  font-size: 9px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.4px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.hero-fia-inv {
+  background: #78350f;
+  color: #fde68a;
+  border: 1px solid #d97706;
+}
+
+.hero-fia-pen {
+  background: #7f1d1d;
+  color: #fecaca;
+  border: 1px solid #ef4444;
 }
 
 /* Ticker / Incident Feed */

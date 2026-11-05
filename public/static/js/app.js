@@ -13,6 +13,7 @@ const syncTimeEl = document.getElementById('sync-time');
 const sessionBadgeEl = document.getElementById('session-badge');
 const sessionLapsEl = document.getElementById('session-laps');
 const flagBadgeEl = document.getElementById('flag-badge');
+const circuitBadgeEl = document.getElementById('circuit-badge');
 const gridDeltaHeader = document.getElementById('grid-delta-header');
 
 // Hero Card Elements
@@ -20,6 +21,7 @@ const heroCardEl = document.getElementById('hero-card');
 const heroDriverCode = document.getElementById('hero-driver-code');
 const heroDriverName = document.getElementById('hero-driver-name');
 const heroDriverPos = document.getElementById('hero-driver-pos');
+const heroFiaBadgeEl = document.getElementById('hero-fia-badge');
 const heroDeltaVal = document.getElementById('hero-delta-val');
 const heroTyreVal = document.getElementById('hero-tyre-val');
 const heroTrendVal = document.getElementById('hero-trend-val');
@@ -248,6 +250,25 @@ function renderUI() {
     sessionBadgeEl.style.color = isRace ? '#ffd000' : isQualy ? '#ff334b' : '#00e5ff';
   }
 
+  // Circuito del calendario oficial
+  if (circuitBadgeEl) {
+    const rawCircuit = rs.circuit || sd?.circuit_default || 'interlagos';
+    const cKey = rawCircuit.toLowerCase().replace(/[^a-z0-9]/g, '');
+    let matched = null;
+    if (sd?.circuits) {
+      for (const [key, meta] of Object.entries(sd.circuits)) {
+        if (cKey.includes(key) || key.includes(cKey)) {
+          matched = meta;
+          break;
+        }
+      }
+    }
+    const flag = matched?.flag || '🇧🇷';
+    const shortName = matched?.short_name || rawCircuit;
+    circuitBadgeEl.textContent = `${flag} ${shortName.toUpperCase()}`;
+    circuitBadgeEl.title = matched?.name ? `${matched.name} (${matched.gp_name || ''})` : shortName;
+  }
+
   // Vuelta / tiempo transcurrido / Cronómetro de sesión
   sessionLapsEl.classList.remove('urgent');
   if (isRace) {
@@ -333,6 +354,22 @@ function renderUI() {
     }
 
     heroDriverPos.textContent = `P${pos}`;
+
+    // Estado FIA del piloto favorito (investigación o sanción)
+    const favFia = (favRow ? favRow[7] : '') || rs.penalties?.[favCode] || '';
+    if (heroFiaBadgeEl) {
+      if (favFia === 'INV') {
+        heroFiaBadgeEl.textContent = '⚠️ INV. FIA';
+        heroFiaBadgeEl.className = 'hero-fia-badge hero-fia-inv';
+        heroFiaBadgeEl.style.display = 'inline-flex';
+      } else if (favFia) {
+        heroFiaBadgeEl.textContent = `🚨 ${favFia}`;
+        heroFiaBadgeEl.className = 'hero-fia-badge hero-fia-pen';
+        heroFiaBadgeEl.style.display = 'inline-flex';
+      } else {
+        heroFiaBadgeEl.style.display = 'none';
+      }
+    }
 
     if (isRace) {
       heroDeltaVal.textContent = delta;
@@ -431,6 +468,18 @@ function renderUI() {
       dInPit = d[6] === 1;
     }
 
+    const dFia = (d[7] || rs.penalties?.[code] || '').trim();
+    let statusHtml = '';
+    if (dInPit) {
+      statusHtml = '<span class="in-pit-tag">PIT</span>';
+    } else if (dFia) {
+      if (dFia === 'INV') {
+        statusHtml = '<span class="fia-badge fia-inv" title="Bajo investigación FIA">INV</span>';
+      } else {
+        statusHtml = `<span class="fia-badge fia-pen" title="Sanción pendiente">${dFia}</span>`;
+      }
+    }
+
     const dMeta = sd?.drivers?.[code] || { color: '#ffffff' };
     const isFav = code === favCode;
     const isCutoff = isQualy && (pos === 15 || pos === 10);
@@ -444,8 +493,8 @@ function renderUI() {
           <div class="team-pill" style="background:${dMeta.color};"></div>
           <span style="letter-spacing:0.5px;">${code}</span>
         </div>
-        <div style="text-align:center;">
-          ${dInPit ? '<span class="in-pit-tag">PIT</span>' : ''}
+        <div style="text-align:center; display:flex; align-items:center; justify-content:center;">
+          ${statusHtml}
         </div>
         <div style="display:flex; align-items:center; justify-content:center;">
           <span class="tyre-badge tyre-${dTyre}">${dTyre}</span>

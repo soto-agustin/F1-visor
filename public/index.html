@@ -27,7 +27,11 @@
       <div id="live-dot" class="brand-dot" title="Estado de conexión"></div>
       <div class="brand-text-col">
         <span class="brand-title">Trackside Pulse</span>
-        <span id="sync-time" class="sync-time-badge">En vivo</span>
+        <div class="brand-sub">
+          <span id="circuit-badge" class="circuit-badge" title="Circuito del calendario">🇧🇷 INTERLAGOS</span>
+          <span class="brand-sub-sep">•</span>
+          <span id="sync-time" class="sync-time-badge">En vivo</span>
+        </div>
       </div>
     </div>
     <div class="header-right">
@@ -52,7 +56,10 @@
 
       <div style="display:flex; justify-content:space-between; align-items:flex-end;">
         <div class="hero-info-center">
-          <span id="hero-driver-code" class="hero-code">---</span>
+          <div style="display:flex; align-items:center;">
+            <span id="hero-driver-code" class="hero-code">---</span>
+            <span id="hero-fia-badge" class="hero-fia-badge" style="display:none;"></span>
+          </div>
           <span id="hero-driver-name" class="hero-name">Sintonizando...</span>
         </div>
         <div id="hero-driver-pos" class="hero-pos-large">P--</div>
@@ -93,7 +100,7 @@
       <div class="grid-header">
         <span style="text-align:center;">Pos</span>
         <span>Piloto</span>
-        <span style="text-align:center;">Pit</span>
+        <span style="text-align:center;" title="Estado: Pit Lane o Sanción/Investigación FIA">Est</span>
         <span style="text-align:center;">Comp</span>
         <span id="grid-delta-header" style="text-align:right;">Delta</span>
       </div>

@@ -45,11 +45,13 @@ class LiveStateStore:
         self.lock = threading.Lock()
         self.pit_loss_sec = pit_loss_sec
         self.session_type = "R" # R, FP1, FP2, FP3, QUALY
+        self.circuit_name = "Interlagos"
         self.lap = 1
         self.total_laps = 71
         self.flag = "GREEN"
         self.remaining_time = "" # Cronómetro oficial de sesión
         self.drivers_state = {}  # num_str -> dict
+        self.driver_penalties = {}  # tla -> "INV" | "+5s" | "+10s" | "DT" | "SG"
         self.ticker = []
         self.last_update_ts = int(time.time())
         self.previous_intervals = {} # num -> prev_float
@@ -162,6 +164,12 @@ class LiveStateStore:
                 except Exception:
                     pass
 
+            meeting = data.get("Meeting") or {}
+            circuit = meeting.get("Circuit") or {}
+            c_name = circuit.get("ShortName") or meeting.get("Name") or data.get("Circuit")
+            if c_name:
+                self.circuit_name = c_name
+
     def update_track_status(self, data):
         with self.lock:
             # Status: "1" All Clear, "2" Yellow, "4" SC, "5" Red, "6" VSC
@@ -178,6 +186,45 @@ class LiveStateStore:
                 self.flag = "VSC"
             self.last_update_ts = int(time.time())
 
+    def _parse_fia_message(self, msg):
+        up = msg.upper()
+        mentioned_tlas = set()
+        for num_str, meta in self.drivers_meta.items():
+            tla = meta.get("tla")
+            num = str(meta.get("num"))
+            if tla and (f"({tla})" in up or f" {tla} " in up):
+                mentioned_tlas.add(tla)
+            elif num and (f"CAR {num}" in up or f"CARS {num}" in up or f"#{num}" in up):
+                mentioned_tlas.add(tla)
+
+        if not mentioned_tlas:
+            return
+
+        for tla in mentioned_tlas:
+            if "PENALTY SERVED" in up or "TIME PENALTY SERVED" in up:
+                self.driver_penalties.pop(tla, None)
+                logger.info(f"FIA: Sanción cumplida para {tla}")
+            elif "NO FURTHER ACTION" in up or "NO INVESTIGATION" in up:
+                if self.driver_penalties.get(tla) == "INV":
+                    self.driver_penalties.pop(tla, None)
+                    logger.info(f"FIA: Sin acción posterior para {tla}")
+            elif "PENALTY" in up:
+                if "5 SEC" in up:
+                    self.driver_penalties[tla] = "+5s"
+                elif "10 SEC" in up:
+                    self.driver_penalties[tla] = "+10s"
+                elif "DRIVE THROUGH" in up or "DRIVE-THROUGH" in up:
+                    self.driver_penalties[tla] = "DT"
+                elif "STOP" in up and "GO" in up:
+                    self.driver_penalties[tla] = "10s SG"
+                else:
+                    self.driver_penalties[tla] = "+5s"
+                logger.info(f"FIA Sanción: {tla} -> {self.driver_penalties[tla]}")
+            elif "INVESTIGATION" in up or "UNDER INVESTIGATION" in up or "NOTED" in up:
+                if not self.driver_penalties.get(tla, "").startswith("+"):
+                    self.driver_penalties[tla] = "INV"
+                    logger.info(f"FIA Investigación: {tla} -> INV")
+
     def update_race_control(self, data):
         with self.lock:
             messages = data.get("Messages", [])
@@ -188,6 +235,7 @@ class LiveStateStore:
                 formatted = f"{lap_str}{msg_txt}"[:75]
                 if formatted and formatted not in self.ticker:
                     self.ticker.insert(0, formatted)
+                self._parse_fia_message(msg_txt)
             self.ticker = self.ticker[:5]
             self.last_update_ts = int(time.time())
 
@@ -281,59 +329,66 @@ class LiveStateStore:
         with self.lock:
             drivers_array = []
             is_race = self.session_type in ("R", "CARRERA")
+            penalties_dict = {tla: pen for tla, pen in self.driver_penalties.items() if pen}
             
             if self.drivers_state:
                 # Ordenar por posición oficial en pista
                 sorted_drivers = sorted(self.drivers_state.values(), key=lambda d: d["pos"])
                 for d in sorted_drivers:
+                    tla = d["tla"]
+                    fia = penalties_dict.get(tla, "")
                     if is_race:
-                        # En Carrera: [CODE, POS, GAP_ANT, TYRE, AGE, IN_PIT, TREND]
+                        # En Carrera: [CODE, POS, GAP_ANT, TYRE, AGE, IN_PIT, TREND, FIA]
                         drivers_array.append([
-                            d["tla"],
+                            tla,
                             d["pos"],
                             d["gap"],
                             d["comp"],
                             d["age"],
                             d["in_pit"],
-                            d["trend"]
+                            d["trend"],
+                            fia
                         ])
                     else:
-                        # En FP / Qualy: [CODE, POS, BEST_LAP, GAP_P1, TYRE, LAPS_TOTAL, IN_PIT]
+                        # En FP / Qualy: [CODE, POS, BEST_LAP, GAP_P1, TYRE, LAPS_TOTAL, IN_PIT, FIA]
                         drivers_array.append([
-                            d["tla"],
+                            tla,
                             d["pos"],
                             d["best_lap"] if d["best_lap"] != "--" else d["gap"],
                             d["gap_p1"] if d["gap_p1"] != "--" else d["gap"],
                             d["comp"],
                             d["laps"] if d["laps"] > 0 else d["age"],
-                            d["in_pit"]
+                            d["in_pit"],
+                            fia
                         ])
             elif self.drivers_meta:
                 # Standby (antes de iniciar la tanda en pista):
                 # Generar la grilla completa con los 22 pilotos oficiales 2026
-                # para que el visor muestre la parrilla completa y no quede vacío
                 p_idx = 1
                 for num_str, dmeta in self.drivers_meta.items():
                     tla = dmeta["tla"]
+                    fia = penalties_dict.get(tla, "")
                     if is_race:
-                        drivers_array.append([tla, p_idx, "--", "M", 0, 0, 0])
+                        drivers_array.append([tla, p_idx, "--", "M", 0, 0, 0, fia])
                     else:
-                        drivers_array.append([tla, p_idx, "--", "--", "M", 0, 0])
+                        drivers_array.append([tla, p_idx, "--", "--", "M", 0, 0, fia])
                     p_idx += 1
 
             ticker_items = list(self.ticker)
             if not ticker_items:
                 ticker_items = ["Sintonizando F1 Live Timing oficial...", "En espera de inicio de sesión en pista"]
 
-            # Incluir metadatos de pilotos si se actualizó la parrilla
+            # Incluir metadatos de pilotos y sanciones
             payload = {
                 "sess": self.session_type,
+                "circuit": self.circuit_name,
                 "lap": self.lap,
                 "total": self.total_laps,
                 "flag": self.flag,
                 "remaining": self.remaining_time,
                 "pit_delta": self.pit_loss_sec,
                 "drivers": drivers_array,
+                "penalties": penalties_dict,
                 "ticker": ticker_items
             }
             
@@ -488,6 +543,10 @@ def main():
             for f in frames:
                 payload = dict(f["p"])
                 payload["pit_delta"] = args.pit_loss
+                if "circuit" not in payload:
+                    payload["circuit"] = data.get("meta", {}).get("circuit", "Interlagos")
+                if "penalties" not in payload:
+                    payload["penalties"] = {"HAM": "+5s", "HAD": "INV"}
                 ts = int(time.time())
                 push_to_upstash(url, token, payload, ts)
                 n_d = len(payload.get("drivers", []))

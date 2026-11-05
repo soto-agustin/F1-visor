@@ -137,8 +137,11 @@
   },
   "circuits": {
     "interlagos": {
-      "name": "Aut\u00f3dromo Jos\u00e9 Carlos Pace (Interlagos)",
-      "country": "Brazil",
+      "name": "Autódromo José Carlos Pace (Interlagos)",
+      "short_name": "Interlagos",
+      "flag": "🇧🇷",
+      "country": "Brasil",
+      "gp_name": "GP de São Paulo",
       "total_laps": 71,
       "pit_loss_sec": 21.0
     },
