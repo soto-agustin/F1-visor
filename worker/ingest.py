@@ -48,6 +48,7 @@ class LiveStateStore:
         self.lap = 1
         self.total_laps = 71
         self.flag = "GREEN"
+        self.remaining_time = "" # Cronómetro oficial de sesión
         self.drivers_state = {}  # num_str -> dict
         self.ticker = []
         self.last_update_ts = int(time.time())
@@ -126,6 +127,17 @@ class LiveStateStore:
             logger.info(f"season_data.json actualizado en disco con {len(drivers_dict)} pilotos.")
         except Exception as e:
             logger.warning(f"Error persistiendo season_data: {e}")
+
+    def update_clock(self, data):
+        """Actualiza el cronómetro oficial de sesión desde ExtrapolatedClock"""
+        with self.lock:
+            rem = data.get("Remaining")
+            if rem:
+                # Si viene formato "00:14:32", recortar a "14:32"
+                if rem.startswith("00:"):
+                    rem = rem[3:]
+                self.remaining_time = rem
+                self.last_update_ts = int(time.time())
 
     def update_session_info(self, data):
         with self.lock:
@@ -302,6 +314,7 @@ class LiveStateStore:
                 "lap": self.lap,
                 "total": self.total_laps,
                 "flag": self.flag,
+                "remaining": self.remaining_time,
                 "pit_delta": self.pit_loss_sec,
                 "drivers": drivers_array,
                 "ticker": list(self.ticker)
@@ -375,6 +388,8 @@ def run_live_signalr(store):
                         store.update_timing_data(parsed)
                     elif topic == "DriverList":
                         store.update_driver_list(parsed)
+                    elif topic == "ExtrapolatedClock":
+                        store.update_clock(parsed)
                     elif topic == "TrackStatus":
                         store.update_track_status(parsed)
                     elif topic == "RaceControlMessages":

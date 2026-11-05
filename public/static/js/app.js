@@ -16,6 +16,7 @@ const flagBadgeEl = document.getElementById('flag-badge');
 const gridDeltaHeader = document.getElementById('grid-delta-header');
 
 // Hero Card Elements
+const heroCardEl = document.getElementById('hero-card');
 const heroDriverCode = document.getElementById('hero-driver-code');
 const heroDriverName = document.getElementById('hero-driver-name');
 const heroDriverPos = document.getElementById('hero-driver-pos');
@@ -34,6 +35,8 @@ const closeModalBtn = document.getElementById('close-driver-modal');
 
 // Timing Grid
 const timingGridBody = document.getElementById('timing-grid-body');
+const viewAllBtn = document.getElementById('view-all-btn');
+const viewBattleBtn = document.getElementById('view-battle-btn');
 // Ticker
 const tickerListEl = document.getElementById('ticker-list');
 
@@ -236,20 +239,36 @@ function renderUI() {
     sessionBadgeEl.style.color = isRace ? '#ffd000' : isQualy ? '#ff334b' : '#00e5ff';
   }
 
-  // Vuelta / tiempo transcurrido
+  // Vuelta / tiempo transcurrido / Cronómetro de sesión
+  sessionLapsEl.classList.remove('urgent');
   if (isRace) {
     sessionLapsEl.textContent = rs.total && rs.total > 0 ? `V ${rs.lap}/${rs.total}` : `V ${rs.lap}`;
     gridDeltaHeader.textContent = 'Delta';
     metric1Label.textContent = 'Delta Ant.';
     metric3Label.textContent = 'Tendencia';
   } else if (isQualy) {
-    sessionLapsEl.textContent = rs.lap ? `V ${rs.lap}` : 'QUALY';
+    if (rs.remaining) {
+      sessionLapsEl.textContent = `⏱ ${rs.remaining}`;
+      // Alerta urgente si quedan menos de 2 minutos (ej. 01:xx o 00:xx)
+      if (rs.remaining.startsWith('01:') || rs.remaining.startsWith('00:')) {
+        sessionLapsEl.classList.add('urgent');
+      }
+    } else {
+      sessionLapsEl.textContent = rs.lap ? `V ${rs.lap}` : 'QUALY';
+    }
     gridDeltaHeader.textContent = 'Gap / Best';
     metric1Label.textContent = 'Gap a P1';
     metric3Label.textContent = 'Estado';
   } else {
     // Prácticas (FP1, FP2, FP3)
-    sessionLapsEl.textContent = rs.lap ? `V ${rs.lap}` : 'PRACTICE';
+    if (rs.remaining) {
+      sessionLapsEl.textContent = `⏱ ${rs.remaining}`;
+      if (rs.remaining.startsWith('01:') || rs.remaining.startsWith('00:')) {
+        sessionLapsEl.classList.add('urgent');
+      }
+    } else {
+      sessionLapsEl.textContent = rs.lap ? `V ${rs.lap}` : 'PRACTICE';
+    }
     gridDeltaHeader.textContent = 'Mejor V.';
     metric1Label.textContent = 'Gap a P1';
     metric3Label.textContent = 'Vueltas';
@@ -363,9 +382,16 @@ function renderUI() {
   // Update inPit set
   previousInPit = new Set(currentDrivers.filter(d => (isRace ? d[5] === 1 : d[6] === 1)).map(d => d[0]));
 
+  // Filtrar según modo Batalla (±2 posiciones respecto al favorito) o Todos
+  let displayedDrivers = currentDrivers;
+  if (state.battleViewMode && favRow) {
+    const favPos = favRow[1];
+    displayedDrivers = currentDrivers.filter(d => Math.abs(d[1] - favPos) <= 2);
+  }
+
   // Render Timing Grid según modo de sesión
   let gridHtml = '';
-  for (const d of currentDrivers) {
+  for (const d of displayedDrivers) {
     const code = d[0];
     const pos = d[1];
     let dDelta = '';
@@ -434,7 +460,29 @@ function renderUI() {
 }
 
 // 7. Event Handlers & Modal
-openModalBtn.addEventListener('click', () => driverModal.classList.add('open'));
+openModalBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  driverModal.classList.add('open');
+});
+
+// Ergonomía táctil: Tocar la Hero Card abre directamente el selector de pilotos
+if (heroCardEl) {
+  heroCardEl.addEventListener('click', () => driverModal.classList.add('open'));
+}
+
+if (viewAllBtn && viewBattleBtn) {
+  viewAllBtn.addEventListener('click', () => {
+    state.setBattleViewMode(false);
+    viewAllBtn.classList.add('active');
+    viewBattleBtn.classList.remove('active');
+  });
+  viewBattleBtn.addEventListener('click', () => {
+    state.setBattleViewMode(true);
+    viewBattleBtn.classList.add('active');
+    viewAllBtn.classList.remove('active');
+  });
+}
+
 closeModalBtn.addEventListener('click', () => driverModal.classList.remove('open'));
 driverModal.addEventListener('click', (e) => {
   if (e.target === driverModal) driverModal.classList.remove('open');

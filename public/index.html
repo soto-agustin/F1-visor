@@ -52,36 +52,43 @@
 
       <div style="display:flex; justify-content:space-between; align-items:flex-end;">
         <div class="hero-info-center">
-          <span id="hero-driver-code" class="hero-code">VER</span>
-          <span id="hero-driver-name" class="hero-name">M. Verstappen</span>
+          <span id="hero-driver-code" class="hero-code">---</span>
+          <span id="hero-driver-name" class="hero-name">Sintonizando...</span>
         </div>
-        <div id="hero-driver-pos" class="hero-pos-large">P1</div>
+        <div id="hero-driver-pos" class="hero-pos-large">P--</div>
       </div>
 
       <div class="hero-metrics">
         <div class="metric-box">
           <span id="metric-1-label" class="metric-label">Delta Ant.</span>
-          <span id="hero-delta-val" class="metric-val">+0.000</span>
+          <span id="hero-delta-val" class="metric-val">--</span>
         </div>
         <div class="metric-box">
           <span id="metric-2-label" class="metric-label">Neumático</span>
-          <span id="hero-tyre-val" class="metric-val">M (0v)</span>
+          <span id="hero-tyre-val" class="metric-val">--</span>
         </div>
         <div class="metric-box">
           <span id="metric-3-label" class="metric-label">Tendencia</span>
-          <span id="hero-trend-val" class="metric-val trend-flat">― Estable</span>
+          <span id="hero-trend-val" class="metric-val trend-flat">--</span>
         </div>
       </div>
 
       <!-- Pit Prediction Box -->
       <div class="pit-prediction-box" id="hero-pit-pred">
         <span class="pit-pred-icon">⏱️</span>
-        <span class="pit-pred-text">Calculando ventana de parada...</span>
+        <span class="pit-pred-text">Esperando telemetría...</span>
       </div>
     </section>
 
     <!-- OLED Timing Grid -->
     <section class="grid-container">
+      <div class="grid-toolbar">
+        <span class="grid-toolbar-title">Parrilla en Pista</span>
+        <div class="view-toggle-group">
+          <button id="view-all-btn" class="toggle-btn active">TODOS</button>
+          <button id="view-battle-btn" class="toggle-btn">BATALLA ±2</button>
+        </div>
+      </div>
       <div class="grid-header">
         <span style="text-align:center;">Pos</span>
         <span>Piloto</span>

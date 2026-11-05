@@ -331,25 +331,84 @@ main {
   border-radius: 1px;
 }
 
+/* Toolbar de vista rápida (Todos vs Batalla) */
+.grid-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: #000;
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.grid-toolbar-title {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+.view-toggle-group {
+  display: flex;
+  background: var(--surface-2);
+  border-radius: 6px;
+  padding: 2px;
+  border: 1px solid var(--border-dim);
+  gap: 2px;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.toggle-btn.active {
+  background: #262626;
+  color: var(--f1-yellow);
+}
+
+.toggle-btn:active {
+  background: #333;
+}
+
+/* Pastillas de neumáticos sólidas para sol directo */
 .tyre-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
   border-radius: 50%;
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 900;
-  border: 1.5px solid currentColor;
-  margin-right: 2px;
+  margin-right: 3px;
 }
 
-.tyre-S { color: var(--compound-soft); }
-.tyre-M { color: var(--compound-med); }
-.tyre-H { color: var(--compound-hard); }
-.tyre-I { color: var(--compound-inter); }
-.tyre-W { color: var(--compound-wet); }
-.tyre-U { color: var(--compound-unk); }
+.tyre-S { background: #E10600; color: #FFFFFF; }
+.tyre-M { background: #FFD000; color: #000000; }
+.tyre-H { background: #FFFFFF; color: #000000; }
+.tyre-I { background: #00A040; color: #FFFFFF; }
+.tyre-W { background: #0070D0; color: #FFFFFF; }
+.tyre-U { background: #666666; color: #FFFFFF; }
+
+/* Reloj de sesión con parpadeo urgente en los últimos 2 minutos */
+.laps-badge.urgent {
+  color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  animation: urgent-pulse 1s infinite;
+}
+
+@keyframes urgent-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
 
 .delta-col {
   text-align: right;

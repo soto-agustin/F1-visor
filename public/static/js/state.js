@@ -4,6 +4,7 @@ export const state = {
   seasonData: null,
   favoriteDriver: localStorage.getItem('trackside_fav_driver') || 'VER',
   currentCircuit: 'interlagos',
+  battleViewMode: false, // false = todos, true = batalla +-2
   raceState: null,
   lastEtag: null,
   lastTs: null,
@@ -11,6 +12,13 @@ export const state = {
   isStale: false,
   isOffline: !navigator.onLine,
   listeners: new Set(),
+
+  setBattleViewMode(enabled) {
+    if (this.battleViewMode !== enabled) {
+      this.battleViewMode = enabled;
+      this.notify();
+    }
+  },
 
   subscribe(listener) {
     this.listeners.add(listener);
