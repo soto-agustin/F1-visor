@@ -145,17 +145,212 @@
       "total_laps": 71,
       "pit_loss_sec": 21.0
     },
-    "monza": {
-      "name": "Autodromo Nazionale Monza",
-      "country": "Italy",
+    "mexicocity": {
+      "name": "Autódromo Hermanos Rodríguez",
+      "short_name": "Ciudad de México",
+      "flag": "🇲🇽",
+      "country": "México",
+      "gp_name": "GP de México",
+      "total_laps": 71,
+      "pit_loss_sec": 22.0
+    },
+    "sakhir": {
+      "name": "Bahrain International Circuit",
+      "short_name": "Sakhir",
+      "flag": "🇧🇭",
+      "country": "Baréin",
+      "gp_name": "GP de Baréin",
+      "total_laps": 57,
+      "pit_loss_sec": 22.5
+    },
+    "jeddah": {
+      "name": "Jeddah Corniche Circuit",
+      "short_name": "Jeddah",
+      "flag": "🇸🇦",
+      "country": "Arabia Saudita",
+      "gp_name": "GP de Arabia Saudita",
+      "total_laps": 50,
+      "pit_loss_sec": 20.0
+    },
+    "albertpark": {
+      "name": "Albert Park Circuit",
+      "short_name": "Melbourne",
+      "flag": "🇦🇺",
+      "country": "Australia",
+      "gp_name": "GP de Australia",
+      "total_laps": 58,
+      "pit_loss_sec": 19.5
+    },
+    "suzuka": {
+      "name": "Suzuka International Racing Course",
+      "short_name": "Suzuka",
+      "flag": "🇯🇵",
+      "country": "Japón",
+      "gp_name": "GP de Japón",
       "total_laps": 53,
-      "pit_loss_sec": 24.0
+      "pit_loss_sec": 22.0
+    },
+    "shanghai": {
+      "name": "Shanghai International Circuit",
+      "short_name": "Shanghai",
+      "flag": "🇨🇳",
+      "country": "China",
+      "gp_name": "GP de China",
+      "total_laps": 56,
+      "pit_loss_sec": 23.0
+    },
+    "miami": {
+      "name": "Miami International Autodrome",
+      "short_name": "Miami",
+      "flag": "🇺🇸",
+      "country": "Estados Unidos",
+      "gp_name": "GP de Miami",
+      "total_laps": 57,
+      "pit_loss_sec": 20.5
+    },
+    "imola": {
+      "name": "Autodromo Enzo e Dino Ferrari",
+      "short_name": "Imola",
+      "flag": "🇮🇹",
+      "country": "Italia",
+      "gp_name": "GP de Emilia-Romaña",
+      "total_laps": 63,
+      "pit_loss_sec": 29.0
+    },
+    "monaco": {
+      "name": "Circuit de Monaco",
+      "short_name": "Mónaco",
+      "flag": "🇲🇨",
+      "country": "Mónaco",
+      "gp_name": "GP de Mónaco",
+      "total_laps": 78,
+      "pit_loss_sec": 19.0
+    },
+    "montreal": {
+      "name": "Circuit Gilles-Villeneuve",
+      "short_name": "Montreal",
+      "flag": "🇨🇦",
+      "country": "Canadá",
+      "gp_name": "GP de Canadá",
+      "total_laps": 70,
+      "pit_loss_sec": 18.5
+    },
+    "barcelona": {
+      "name": "Circuit de Barcelona-Catalunya",
+      "short_name": "Barcelona",
+      "flag": "🇪🇸",
+      "country": "España",
+      "gp_name": "GP de España",
+      "total_laps": 66,
+      "pit_loss_sec": 22.0
+    },
+    "spielberg": {
+      "name": "Red Bull Ring",
+      "short_name": "Spielberg",
+      "flag": "🇦🇹",
+      "country": "Austria",
+      "gp_name": "GP de Austria",
+      "total_laps": 71,
+      "pit_loss_sec": 20.0
     },
     "silverstone": {
       "name": "Silverstone Circuit",
-      "country": "United Kingdom",
+      "short_name": "Silverstone",
+      "flag": "🇬🇧",
+      "country": "Reino Unido",
+      "gp_name": "GP de Gran Bretaña",
       "total_laps": 52,
       "pit_loss_sec": 21.5
+    },
+    "hungaroring": {
+      "name": "Hungaroring",
+      "short_name": "Budapest",
+      "flag": "🇭🇺",
+      "country": "Hungría",
+      "gp_name": "GP de Hungría",
+      "total_laps": 70,
+      "pit_loss_sec": 21.0
+    },
+    "spa": {
+      "name": "Circuit de Spa-Francorchamps",
+      "short_name": "Spa",
+      "flag": "🇧🇪",
+      "country": "Bélgica",
+      "gp_name": "GP de Bélgica",
+      "total_laps": 44,
+      "pit_loss_sec": 23.0
+    },
+    "zandvoort": {
+      "name": "Circuit Zandvoort",
+      "short_name": "Zandvoort",
+      "flag": "🇳🇱",
+      "country": "Países Bajos",
+      "gp_name": "GP de Países Bajos",
+      "total_laps": 72,
+      "pit_loss_sec": 20.0
+    },
+    "monza": {
+      "name": "Autodromo Nazionale Monza",
+      "short_name": "Monza",
+      "flag": "🇮🇹",
+      "country": "Italia",
+      "gp_name": "GP de Italia",
+      "total_laps": 53,
+      "pit_loss_sec": 24.0
+    },
+    "baku": {
+      "name": "Baku City Circuit",
+      "short_name": "Bakú",
+      "flag": "🇦🇿",
+      "country": "Azerbaiyán",
+      "gp_name": "GP de Azerbaiyán",
+      "total_laps": 51,
+      "pit_loss_sec": 21.0
+    },
+    "singapore": {
+      "name": "Marina Bay Street Circuit",
+      "short_name": "Singapur",
+      "flag": "🇸🇬",
+      "country": "Singapur",
+      "gp_name": "GP de Singapur",
+      "total_laps": 62,
+      "pit_loss_sec": 28.0
+    },
+    "austin": {
+      "name": "Circuit of the Americas",
+      "short_name": "Austin",
+      "flag": "🇺🇸",
+      "country": "Estados Unidos",
+      "gp_name": "GP de Estados Unidos",
+      "total_laps": 56,
+      "pit_loss_sec": 20.5
+    },
+    "lasvegas": {
+      "name": "Las Vegas Strip Circuit",
+      "short_name": "Las Vegas",
+      "flag": "🇺🇸",
+      "country": "Estados Unidos",
+      "gp_name": "GP de Las Vegas",
+      "total_laps": 50,
+      "pit_loss_sec": 20.0
+    },
+    "lusail": {
+      "name": "Lusail International Circuit",
+      "short_name": "Lusail",
+      "flag": "🇶🇦",
+      "country": "Catar",
+      "gp_name": "GP de Catar",
+      "total_laps": 57,
+      "pit_loss_sec": 24.5
+    },
+    "yasmarina": {
+      "name": "Yas Marina Circuit",
+      "short_name": "Abu Dhabi",
+      "flag": "🇦🇪",
+      "country": "Emiratos Árabes",
+      "gp_name": "GP de Abu Dhabi",
+      "total_laps": 58,
+      "pit_loss_sec": 22.0
     }
   }
 }

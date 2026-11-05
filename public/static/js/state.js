@@ -51,6 +51,7 @@ export const state = {
   updateRaceState(newState, etag) {
     if (etag) this.lastEtag = etag;
     this.raceState = newState;
+    if (newState?.circuit) this.currentCircuit = newState.circuit;
     this.lastSuccessfulFetch = Date.now();
     this.isStale = false;
     this.notify();

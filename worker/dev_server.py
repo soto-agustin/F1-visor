@@ -88,7 +88,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     def api_live(self):
         payload, ts = self.replay.snapshot()
-        state = {**payload, "pit_delta": self.pit_delta}
+        circuit = self.replay.meta.get("circuit", "Interlagos")
+        state = {"circuit": circuit, "penalties": {}, **payload, "pit_delta": self.pit_delta}
         etag = '"' + hashlib.sha1(json.dumps(state, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:16] + '"'
         if self.headers.get("If-None-Match") == etag:
             self.send_response(304)

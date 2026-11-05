@@ -46,6 +46,48 @@ const tickerListEl = document.getElementById('ticker-list');
 
 let previousFlag = null;
 let previousInPit = new Set();
+let lastTrackedLap = null;
+let previousLapPositions = {};
+let currentLapPositions = {};
+
+function normalizeStr(str) {
+  return (str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function matchCircuit(rawCircuit, sdCircuits) {
+  if (!rawCircuit || !sdCircuits) return null;
+  const target = normalizeStr(rawCircuit);
+  if (!target) return null;
+
+  for (const [key, meta] of Object.entries(sdCircuits)) {
+    const normKey = normalizeStr(key);
+    if (target === normKey || target.includes(normKey) || normKey.includes(target)) {
+      return meta;
+    }
+  }
+
+  for (const meta of Object.values(sdCircuits)) {
+    const candidates = [
+      meta.short_name,
+      meta.name,
+      meta.gp_name,
+      meta.country
+    ];
+    for (const c of candidates) {
+      if (!c) continue;
+      const normC = normalizeStr(c);
+      if (normC && (target.includes(normC) || normC.includes(target))) {
+        return meta;
+      }
+    }
+  }
+
+  return null;
+}
 
 // 1. Initial Load: Load season_data.json
 async function loadSeasonData() {
@@ -252,19 +294,10 @@ function renderUI() {
 
   // Circuito del calendario oficial
   if (circuitBadgeEl) {
-    const rawCircuit = rs.circuit || sd?.circuit_default || 'interlagos';
-    const cKey = rawCircuit.toLowerCase().replace(/[^a-z0-9]/g, '');
-    let matched = null;
-    if (sd?.circuits) {
-      for (const [key, meta] of Object.entries(sd.circuits)) {
-        if (cKey.includes(key) || key.includes(cKey)) {
-          matched = meta;
-          break;
-        }
-      }
-    }
-    const flag = matched?.flag || '🇧🇷';
-    const shortName = matched?.short_name || rawCircuit;
+    const rawCircuit = rs.circuit || sd?.circuit_default || '';
+    const matched = matchCircuit(rawCircuit, sd?.circuits);
+    const flag = matched?.flag || '🏁';
+    const shortName = matched?.short_name || rawCircuit || 'F1 GP';
     circuitBadgeEl.textContent = `${flag} ${shortName.toUpperCase()}`;
     circuitBadgeEl.title = matched?.name ? `${matched.name} (${matched.gp_name || ''})` : shortName;
   }
@@ -275,7 +308,7 @@ function renderUI() {
     sessionLapsEl.textContent = rs.total && rs.total > 0 ? `V ${rs.lap}/${rs.total}` : `V ${rs.lap}`;
     gridDeltaHeader.textContent = 'Delta';
     metric1Label.textContent = 'Delta Ant.';
-    metric3Label.textContent = 'Tendencia';
+    metric3Label.textContent = 'En Vuelta';
   } else if (isQualy) {
     if (rs.remaining) {
       sessionLapsEl.textContent = `⏱ ${rs.remaining}`;
@@ -322,6 +355,40 @@ function renderUI() {
   heroDriverName.textContent = favDriverMeta.name;
 
   const currentDrivers = rs.drivers || [];
+  const currentLap = rs.lap || 1;
+
+  // Seguimiento de cambio de posición en la vuelta actual
+  if (isRace && currentDrivers.length > 0) {
+    if (lastTrackedLap === null) {
+      previousLapPositions = {};
+      for (const d of currentDrivers) {
+        if (d[0] && d[1] != null) previousLapPositions[d[0]] = d[1];
+      }
+      lastTrackedLap = currentLap;
+    } else if (currentLap > lastTrackedLap) {
+      if (currentLapPositions && Object.keys(currentLapPositions).length > 0) {
+        previousLapPositions = { ...currentLapPositions };
+      }
+      lastTrackedLap = currentLap;
+    } else if (currentLap < lastTrackedLap) {
+      previousLapPositions = {};
+      for (const d of currentDrivers) {
+        if (d[0] && d[1] != null) previousLapPositions[d[0]] = d[1];
+      }
+      lastTrackedLap = currentLap;
+    }
+
+    currentLapPositions = {};
+    for (const d of currentDrivers) {
+      if (d[0] && d[1] != null) {
+        currentLapPositions[d[0]] = d[1];
+        if (previousLapPositions[d[0]] === undefined) {
+          previousLapPositions[d[0]] = d[1];
+        }
+      }
+    }
+  }
+
   const favRow = currentDrivers.find(d => d[0] === favCode);
 
   if (favRow) {
@@ -374,8 +441,21 @@ function renderUI() {
     if (isRace) {
       heroDeltaVal.textContent = delta;
       heroTyreVal.textContent = `${tyre} (${age}v)`;
-      heroTrendVal.textContent = trend === 1 ? '▲ Ganando' : trend === -1 ? '▼ Perdiendo' : '― Estable';
-      heroTrendVal.className = 'metric-val ' + (trend === 1 ? 'trend-up' : trend === -1 ? 'trend-down' : 'trend-flat');
+      
+      const basePos = previousLapPositions[favCode] != null ? previousLapPositions[favCode] : pos;
+      const diff = basePos - pos;
+
+      if (diff > 0) {
+        heroTrendVal.textContent = `▲ Ganó ${diff} pos`;
+        heroTrendVal.className = 'metric-val trend-up';
+      } else if (diff < 0) {
+        const lost = Math.abs(diff);
+        heroTrendVal.textContent = `▼ Perdió ${lost} pos`;
+        heroTrendVal.className = 'metric-val trend-down';
+      } else {
+        heroTrendVal.textContent = '― Mantuvo';
+        heroTrendVal.className = 'metric-val trend-flat';
+      }
     } else if (isQualy) {
       heroDeltaVal.textContent = gapP1;
       heroTyreVal.textContent = `${tyre} (${age}v)`;
@@ -483,8 +563,6 @@ function renderUI() {
     const dMeta = sd?.drivers?.[code] || { color: '#ffffff' };
     const isFav = code === favCode;
     const isCutoff = isQualy && (pos === 15 || pos === 10);
-    const trendClass = dTrend === 1 ? 'trend-up' : dTrend === -1 ? 'trend-down' : 'trend-flat';
-    const trendArrow = isRace ? (dTrend === 1 ? '▲' : dTrend === -1 ? '▼' : '') : '';
 
     gridHtml += `
       <div class="grid-row ${isFav ? 'favorite' : ''} ${isCutoff ? 'elimination-cutoff' : ''}" data-driver="${code}">
@@ -500,9 +578,7 @@ function renderUI() {
           <span class="tyre-badge tyre-${dTyre}">${dTyre}</span>
           <span style="font-size:10px; color:#a3a3a3; font-family:monospace;">${dAge}v</span>
         </div>
-        <div class="delta-col">
-          <span class="${trendClass}">${trendArrow}</span> ${dDelta}
-        </div>
+        <div class="delta-col">${dDelta}</div>
       </div>
     `;
   }

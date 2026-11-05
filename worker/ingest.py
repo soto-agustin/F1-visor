@@ -546,7 +546,7 @@ def main():
                 if "circuit" not in payload:
                     payload["circuit"] = data.get("meta", {}).get("circuit", "Interlagos")
                 if "penalties" not in payload:
-                    payload["penalties"] = {"HAM": "+5s", "HAD": "INV"}
+                    payload["penalties"] = {}
                 ts = int(time.time())
                 push_to_upstash(url, token, payload, ts)
                 n_d = len(payload.get("drivers", []))
