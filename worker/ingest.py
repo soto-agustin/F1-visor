@@ -279,34 +279,51 @@ class LiveStateStore:
 
     def serialize_compact(self):
         with self.lock:
-            # Ordenar por posición
-            sorted_drivers = sorted(self.drivers_state.values(), key=lambda d: d["pos"])
             drivers_array = []
             is_race = self.session_type in ("R", "CARRERA")
             
-            for d in sorted_drivers:
-                if is_race:
-                    # En Carrera: [CODE, POS, GAP_ANT, TYRE, AGE, IN_PIT, TREND]
-                    drivers_array.append([
-                        d["tla"],
-                        d["pos"],
-                        d["gap"],
-                        d["comp"],
-                        d["age"],
-                        d["in_pit"],
-                        d["trend"]
-                    ])
-                else:
-                    # En FP / Qualy: [CODE, POS, BEST_LAP, GAP_P1, TYRE, LAPS_TOTAL, IN_PIT]
-                    drivers_array.append([
-                        d["tla"],
-                        d["pos"],
-                        d["best_lap"] if d["best_lap"] != "--" else d["gap"],
-                        d["gap_p1"] if d["gap_p1"] != "--" else d["gap"],
-                        d["comp"],
-                        d["laps"] if d["laps"] > 0 else d["age"],
-                        d["in_pit"]
-                    ])
+            if self.drivers_state:
+                # Ordenar por posición oficial en pista
+                sorted_drivers = sorted(self.drivers_state.values(), key=lambda d: d["pos"])
+                for d in sorted_drivers:
+                    if is_race:
+                        # En Carrera: [CODE, POS, GAP_ANT, TYRE, AGE, IN_PIT, TREND]
+                        drivers_array.append([
+                            d["tla"],
+                            d["pos"],
+                            d["gap"],
+                            d["comp"],
+                            d["age"],
+                            d["in_pit"],
+                            d["trend"]
+                        ])
+                    else:
+                        # En FP / Qualy: [CODE, POS, BEST_LAP, GAP_P1, TYRE, LAPS_TOTAL, IN_PIT]
+                        drivers_array.append([
+                            d["tla"],
+                            d["pos"],
+                            d["best_lap"] if d["best_lap"] != "--" else d["gap"],
+                            d["gap_p1"] if d["gap_p1"] != "--" else d["gap"],
+                            d["comp"],
+                            d["laps"] if d["laps"] > 0 else d["age"],
+                            d["in_pit"]
+                        ])
+            elif self.drivers_meta:
+                # Standby (antes de iniciar la tanda en pista):
+                # Generar la grilla completa con los 22 pilotos oficiales 2026
+                # para que el visor muestre la parrilla completa y no quede vacío
+                p_idx = 1
+                for num_str, dmeta in self.drivers_meta.items():
+                    tla = dmeta["tla"]
+                    if is_race:
+                        drivers_array.append([tla, p_idx, "--", "M", 0, 0, 0])
+                    else:
+                        drivers_array.append([tla, p_idx, "--", "--", "M", 0, 0])
+                    p_idx += 1
+
+            ticker_items = list(self.ticker)
+            if not ticker_items:
+                ticker_items = ["Sintonizando F1 Live Timing oficial...", "En espera de inicio de sesión en pista"]
 
             # Incluir metadatos de pilotos si se actualizó la parrilla
             payload = {
@@ -317,7 +334,7 @@ class LiveStateStore:
                 "remaining": self.remaining_time,
                 "pit_delta": self.pit_loss_sec,
                 "drivers": drivers_array,
-                "ticker": list(self.ticker)
+                "ticker": ticker_items
             }
             
             # Enviar metadatos de pilotos para que el cliente siempre tenga dorsales y colores frescos
@@ -331,7 +348,7 @@ class LiveStateStore:
                 }
             payload["grid_meta"] = drivers_meta_client
 
-            return payload, self.last_update_ts
+            return payload, int(time.time())
 
 
 def run_live_signalr(store):
@@ -427,6 +444,15 @@ def push_to_upstash(redis_url, redis_token, payload, ts):
 
 
 def main():
+    # Cargar .env prioritariamente antes de parsear argumentos
+    env_file = ROOT.parent / ".env"
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
     parser = argparse.ArgumentParser(description="Trackside Pulse - Worker de Ingesta")
     parser.add_argument("--live", action="store_true", help="Conectar a F1 Live Timing SignalR")
     parser.add_argument("--upstash-url", default=os.getenv("UPSTASH_REDIS_REST_URL"))
@@ -437,14 +463,8 @@ def main():
     parser.add_argument("--loop", action="store_true", help="Repetir replay al terminar")
     args = parser.parse_args()
 
-    # Cargar .env si existe
-    env_file = ROOT.parent / ".env"
-    if env_file.exists():
-        for line in env_file.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+    url = args.upstash_url or os.getenv("UPSTASH_REDIS_REST_URL")
+    token = args.upstash_token or os.getenv("UPSTASH_REDIS_REST_TOKEN")
 
     store = LiveStateStore(pit_loss_sec=args.pit_loss)
 
@@ -458,8 +478,6 @@ def main():
         frames = data["frames"]
         logger.info(f"Iniciando simulación de carrera hacia Upstash Redis: {len(frames)} frames a x{args.speed}...")
 
-        url = args.upstash_url or os.getenv("UPSTASH_REDIS_REST_URL")
-        token = args.upstash_token or os.getenv("UPSTASH_REDIS_REST_TOKEN")
         if not url or not token:
             logger.error("Se requiere UPSTASH_REDIS_REST_URL y UPSTASH_REDIS_REST_TOKEN")
             sys.exit(1)
@@ -472,7 +490,8 @@ def main():
                 payload["pit_delta"] = args.pit_loss
                 ts = int(time.time())
                 push_to_upstash(url, token, payload, ts)
-                logger.info(f"Simulando en la nube -> Vuelta {payload.get('lap')}/{payload.get('total')} | Bandera: {payload.get('flag')}")
+                n_d = len(payload.get("drivers", []))
+                logger.info(f"[SIMULACIÓN] Vuelta {payload.get('lap')}/{payload.get('total')} -> Upstash OK ({n_d} pilotos)")
                 time.sleep(step_delay)
             if not args.loop:
                 break
@@ -484,12 +503,20 @@ def main():
         logger.info("Worker Live SignalR activo en segundo plano.")
 
     # Bucle de publicación a Upstash Redis cada 4 segundos
+    if url and token:
+        logger.info(f"Conectado a Upstash Redis: {url}")
+    else:
+        logger.warning("ATENCIÓN: UPSTASH_REDIS_REST_URL o TOKEN no configurados.")
+
     logger.info("Iniciando bucle de publicación...")
     while True:
         try:
             payload, ts = store.serialize_compact()
-            if args.upstash_url and args.upstash_token:
-                push_to_upstash(args.upstash_url, args.upstash_token, payload, ts)
+            if url and token:
+                push_to_upstash(url, token, payload, ts)
+                n_drv = len(payload.get("drivers", []))
+                s_name = payload.get("sess", "LIVE")
+                logger.info(f"[NUBE] Upstash sincronizado -> {s_name} | {n_drv} pilotos en grilla | ts={ts}")
             
             # También persistir un archivo local para el servidor de desarrollo
             cache_file = ROOT / "data" / "live_state.json"

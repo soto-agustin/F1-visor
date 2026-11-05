@@ -62,12 +62,6 @@
       "team": "Ferrari",
       "color": "#ED1131"
     },
-    "HIR": {
-      "name": "R. Hirakawa",
-      "num": 50,
-      "team": "Haas F1 Team",
-      "color": "#9C9FA2"
-    },
     "HUL": {
       "name": "N. Hulkenberg",
       "num": 27,
@@ -143,7 +137,7 @@
   },
   "circuits": {
     "interlagos": {
-      "name": "Autódromo José Carlos Pace (Interlagos)",
+      "name": "Aut\u00f3dromo Jos\u00e9 Carlos Pace (Interlagos)",
       "country": "Brazil",
       "total_laps": 71,
       "pit_loss_sec": 21.0
