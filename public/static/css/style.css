@@ -158,6 +158,7 @@ header {
 .flag-red { background: #7f1d1d; color: #fecaca; border: 1px solid #dc2626; }
 .flag-sc { background: #d97706; color: #000000; font-weight: 900; }
 .flag-vsc { background: #ca8a04; color: #000000; font-weight: 900; }
+.flag-standby { background: #1e293b; color: #94a3b8; border: 1px solid #475569; }
 
 /* Main Container */
 main {

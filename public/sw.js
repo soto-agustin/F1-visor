@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trackside-pulse-v11';
+const CACHE_NAME = 'trackside-pulse-v12';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

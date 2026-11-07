@@ -44,11 +44,11 @@ class LiveStateStore:
     def __init__(self, pit_loss_sec=21.0):
         self.lock = threading.Lock()
         self.pit_loss_sec = pit_loss_sec
-        self.session_type = "R" # R, FP1, FP2, FP3, QUALY
+        self.session_type = "STANDBY" # R, FP1, FP2, FP3, QUALY, STANDBY
         self.circuit_name = "Interlagos"
-        self.lap = 1
-        self.total_laps = 71
-        self.flag = "GREEN"
+        self.lap = 0
+        self.total_laps = 0
+        self.flag = "STANDBY"
         self.remaining_time = "" # Cronómetro oficial de sesión
         self.drivers_state = {}  # num_str -> dict
         self.driver_penalties = {}  # tla -> "INV" | "+5s" | "+10s" | "DT" | "SG"
@@ -153,10 +153,14 @@ class LiveStateStore:
                 self.session_type = "FP3"
             elif "qualifying" in stype or "qualy" in stype:
                 self.session_type = "QUALY"
-            elif "practice" in stype:
-                self.session_type = "PRACTICE"
-            else:
+            elif "sprint shootout" in stype:
+                self.session_type = "SQ"
+            elif "sprint" in stype:
+                self.session_type = "SPRINT"
+            elif "race" in stype or "carrera" in stype:
                 self.session_type = "R"
+            elif "practice" in stype:
+                self.session_type = "FP"
             
             if "TotalLaps" in data:
                 try:

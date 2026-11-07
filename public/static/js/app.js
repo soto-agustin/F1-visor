@@ -161,7 +161,11 @@ async function fetchRaceState() {
     state.setOffline(false);
 
     if (res.status === 304) {
-      // 304 Not Modified: 0 bytes transferred!
+      // 304 Not Modified: el servidor validó que el worker está activo y los datos son frescos
+      const serverDate = res.headers.get('Date');
+      const serverTs = serverDate ? Math.floor(new Date(serverDate).getTime() / 1000) : Math.floor(Date.now() / 1000);
+      state.lastTs = serverTs;
+      state.setOffline(false);
       checkStaleness();
       return;
     }
@@ -169,7 +173,10 @@ async function fetchRaceState() {
     if (res.ok) {
       const etag = res.headers.get('ETag');
       const data = await res.json();
-      if (!headerTs && data.ts) state.lastTs = data.ts;
+      const serverDate = res.headers.get('Date');
+      const serverTs = serverDate ? Math.floor(new Date(serverDate).getTime() / 1000) : Math.floor(Date.now() / 1000);
+      state.lastTs = headerTs || data.ts || serverTs;
+      state.setOffline(false);
       
       // Check for flag alert triggers
       if (data.flag && data.flag !== previousFlag) {
@@ -210,7 +217,7 @@ async function fetchRaceState() {
   }
 }
 
-// 4. Staleness Detector (> 90 seconds) con protección de reloj local
+// 4. Staleness Detector (> 90 seconds) con protección de reloj local y detección de standby
 function checkStaleness() {
   const lastTs = state.lastTs || state.raceState?.ts;
   if (!lastTs) {
@@ -220,10 +227,17 @@ function checkStaleness() {
   const diff = nowSec - lastTs;
   const safeDiff = Math.max(0, diff);
 
+  const rs = state.raceState;
+  const isStandby = rs?.sess === 'STANDBY' || rs?.flag === 'STANDBY' || rs?.flag === 'WAITING' || (rs?.drivers && rs.drivers.length > 0 && rs.drivers.every(d => d[2] === '--'));
+
   if (safeDiff > STALE_THRESHOLD_SECONDS) {
     state.markStale(true);
     stalenessBanner.classList.add('visible');
-    stalenessText.textContent = `⚠️ DATOS DESFASADOS - VUELTA CONGELADA (Última señal hace ${safeDiff}s)`;
+    if (isStandby) {
+      stalenessText.textContent = `⚠️ SEÑAL EN ESPERA DE PISTA (Sin datos en vivo hace ${safeDiff}s)`;
+    } else {
+      stalenessText.textContent = `⚠️ DATOS DESFASADOS - VUELTA CONGELADA (Última señal hace ${safeDiff}s)`;
+    }
     liveDot.className = 'brand-dot stale';
     if (syncTimeEl) syncTimeEl.textContent = `Desfasado (+${safeDiff}s)`;
   } else {
@@ -231,7 +245,8 @@ function checkStaleness() {
     stalenessBanner.classList.remove('visible');
     liveDot.className = state.isOffline ? 'brand-dot offline' : 'brand-dot';
     if (syncTimeEl) {
-      if (safeDiff <= 3) syncTimeEl.textContent = 'En vivo';
+      if (isStandby) syncTimeEl.textContent = 'En espera';
+      else if (safeDiff <= 3) syncTimeEl.textContent = 'En vivo';
       else syncTimeEl.textContent = `Hace ${safeDiff}s`;
     }
   }
@@ -302,11 +317,17 @@ function renderUI() {
   const isPractice = sess.startsWith('P') || sess.includes('FP');
   const isQualy = sess.startsWith('Q');
   const isRace = sess === 'R' || sess === 'CARRERA';
+  const isStandby = sess === 'STANDBY' || sess === 'ESPERA' || (rs.drivers && rs.drivers.length > 0 && rs.drivers.every(d => d[2] === '--'));
 
   // Badge de sesión exacto
   if (sessionBadgeEl) {
-    sessionBadgeEl.textContent = sess;
-    sessionBadgeEl.style.color = isRace ? '#ffd000' : isQualy ? '#ff334b' : '#00e5ff';
+    if (isStandby) {
+      sessionBadgeEl.textContent = 'STANDBY';
+      sessionBadgeEl.style.color = '#00e5ff';
+    } else {
+      sessionBadgeEl.textContent = sess;
+      sessionBadgeEl.style.color = isRace ? '#ffd000' : isQualy ? '#ff334b' : '#00e5ff';
+    }
   }
 
   // Circuito del calendario oficial
@@ -321,7 +342,12 @@ function renderUI() {
 
   // Vuelta / tiempo transcurrido / Cronómetro de sesión
   sessionLapsEl.classList.remove('urgent');
-  if (isRace) {
+  if (isStandby) {
+    sessionLapsEl.textContent = rs.lap && rs.lap > 0 ? `V ${rs.lap}` : 'PREVIA';
+    gridDeltaHeader.textContent = isRace ? 'Delta' : 'Gap / Best';
+    metric1Label.textContent = isRace ? 'Delta Ant.' : 'Gap a P1';
+    metric3Label.textContent = isRace ? 'En Vuelta' : 'Estado';
+  } else if (isRace) {
     sessionLapsEl.textContent = rs.total && rs.total > 0 ? `V ${rs.lap}/${rs.total}` : `V ${rs.lap}`;
     gridDeltaHeader.textContent = 'Delta';
     metric1Label.textContent = 'Delta Ant.';
@@ -355,8 +381,10 @@ function renderUI() {
   }
   
   if (rs.flag) {
-    flagBadgeEl.textContent = rs.flag;
+    const isWaiting = rs.flag === 'STANDBY' || rs.flag === 'WAITING' || isStandby;
+    flagBadgeEl.textContent = isWaiting ? 'STANDBY' : rs.flag;
     flagBadgeEl.className = 'flag-badge ' + (
+      isWaiting ? 'flag-standby' :
       (rs.flag === 'GREEN' || rs.flag === 'FIN') ? 'flag-green' :
       rs.flag === 'YELLOW' ? 'flag-yellow' :
       rs.flag === 'RED' ? 'flag-red' :
@@ -493,7 +521,9 @@ function renderUI() {
     }
 
     // Pit Window / Info Box según modo
-    if (isQualy) {
+    if (isStandby) {
+      heroPitPred.innerHTML = '<span class="pit-pred-icon">⏳</span> <strong>EN ESPERA DE SALIDA A PISTA</strong> • Esperando señal verde';
+    } else if (isQualy) {
       const cutoffGap = pos > 15 ? 'Fuera por el momento' : 'Dentro del corte';
       heroPitPred.innerHTML = `<span class="pit-pred-icon">⏱️</span> Mejor tiempo: <strong>${bestLap}</strong> (${cutoffGap})`;
     } else if (isPractice) {

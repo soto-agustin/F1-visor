@@ -49,27 +49,32 @@ export default async function handler(request) {
       });
     }
 
+    const nowSec = Math.floor(Date.now() / 1000);
+    const tsNum = parseInt(ts, 10) || 0;
+    const workerAge = tsNum ? (nowSec - tsNum) : 999;
+    const isWorkerStale = workerAge > 90;
+
     const etag = `"${hash}"`;
     const clientIfNoneMatch = request.headers.get('if-none-match');
 
-    // 2. Si el hash coincide con If-None-Match, retornar HTTP 304 (0 bytes de payload!)
-    if (clientIfNoneMatch && clientIfNoneMatch === etag) {
+    // 2. Si el hash coincide con If-None-Match Y el worker sigue vivo (ha publicado en los últimos 90s),
+    // retornar HTTP 304 (0 bytes de payload!). Si el worker murió, se fuerza entrega de estado desfasado.
+    if (clientIfNoneMatch && clientIfNoneMatch === etag && !isWorkerStale) {
       return new Response(null, {
         status: 304,
         headers: {
           ETag: etag,
-          'X-TS': String(ts),
           'Cache-Control': 'no-cache',
         },
       });
     }
 
-    // 3. Si hay cambio, devolver el payload completo con ETag y X-TS
+    // 3. Si hay cambio o el worker se desfasó, devolver el payload con ETag y fecha
     return new Response(rawState, {
       status: 200,
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        ETag: etag,
+        ETag: isWorkerStale ? '"stale"' : etag,
         'X-TS': String(ts),
         'Cache-Control': 'no-cache',
       },
